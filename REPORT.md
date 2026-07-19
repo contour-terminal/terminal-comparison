@@ -354,8 +354,8 @@ Compiled from each terminal's source tree and documentation rather than measured
 | XTWINOPS window manipulation | yes | partial | partial | partial | partial | partial | partial | partial | yes | partial | yes | yes | ? |
 | DECSLPP (set lines per page) | no | no | no | no | no | no | yes | no | yes | no | yes | yes | ? |
 | Alternate screen buffer (DEC private modes 47 / 1047 / 1049) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
-| DEC page memory (more than one page) | yes | no | no | no | no | no | no | no | no | yes | no | ? | ? |
-| DECXCPR (extended cursor position report) | yes | partial | no | no | no | no | yes | no | yes | yes | yes | ? | ? |
+| DEC page memory (more than one page) | yes | no | no | no | no | no | no | no | no | yes | no | no | ? |
+| DECXCPR (extended cursor position report) | yes | partial | no | no | no | no | yes | no | yes | yes | partial | yes | ? |
 
 ## GUI and user-facing features (documented)
 
