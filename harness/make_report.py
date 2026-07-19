@@ -161,6 +161,29 @@ def cross_check(platforms, caps, vt_features, keys) -> list[dict]:
     return out
 
 
+def declared_not_honoured(platforms, caps, keys) -> list[dict]:
+    """Terminals that answer DECRQM for a mode but do not act on it.
+
+    DECRQM reports what a terminal recognises. A functional probe reports what it does.
+    Where both exist for the same feature, a terminal claiming support it does not
+    deliver is the one result neither measurement finds on its own.
+    """
+    out = []
+    for check in caps.get("mode_behaviour_checks") or []:
+        for key in keys:
+            doc = next((run.yamls[key] for run in platforms if key in run.yamls), None)
+            probe = next((run.probes[key] for run in platforms if key in run.probes), None)
+            if doc is None or probe is None:
+                continue
+            if mode_value(doc, check["number"]) != "yes":
+                continue
+            honoured = probe_result(probe, {"path": check["probe_path"]})
+            if honoured == "no":
+                out.append({"terminal": key, "number": check["number"],
+                            "name": check["name"], "note": check.get("note", "")})
+    return out
+
+
 def terminals_without_decrqm(platforms, keys) -> list[str]:
     """Terminals that answered no DECRQM at all, so every mode row reads n/a."""
     out = []
@@ -410,6 +433,26 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
                 row.append(SUPPORT_MARK[mode_value(doc, number)][2] if doc else "?")
             rows.append(row)
         add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+        add("")
+
+    unhonoured = declared_not_honoured(platforms, caps, keys)
+    if unhonoured:
+        add("## Modes a terminal declares but does not honour")
+        add("")
+        add("DECRQM reports what a terminal *recognises*; a functional probe reports what "
+            "it *does*. Where this report has both for the same feature, the two are "
+            "compared. A terminal listed here answers a mode query affirmatively and then "
+            "does not act on the mode -- which is the one failure a mode query cannot "
+            "detect by construction, and is worse for an application than an honest "
+            "\"not recognised\", because there is nothing left to test.")
+        add("")
+        add(md_table(
+            ["Mode", "Terminal", "DECRQM says", "Behaviour"],
+            [[f"`{u['number']}` — {u['name']}", BY_KEY[u["terminal"]].name,
+              "supported", "not honoured"] for u in unhonoured]))
+        add("")
+        for note in {u["note"].strip() for u in unhonoured if u.get("note")}:
+            add(f"- {note}")
         add("")
 
     disagreements = cross_check(platforms, caps, vt_features, keys)
@@ -757,6 +800,25 @@ from 0/158 to 158/158.</p></div>""")
                 row.append(cell(mode_value(doc, number)) if doc else cell("unknown"))
             rows.append(row)
         add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+
+    unhonoured = declared_not_honoured(platforms, caps, keys)
+    if unhonoured:
+        add("<h2>Modes a terminal declares but does not honour</h2>")
+        add('<p class="note">DECRQM reports what a terminal <em>recognises</em>; a '
+            "functional probe reports what it <em>does</em>. Where this report has both "
+            "for the same feature, the two are compared. A terminal listed here answers a "
+            "mode query affirmatively and then does not act on the mode &mdash; the one "
+            "failure a mode query cannot detect by construction, and worse for an "
+            "application than an honest &ldquo;not recognised&rdquo;, because there is "
+            "nothing left to test.</p>")
+        add(html_table(
+            ["Mode", "Terminal", "DECRQM says", "Behaviour"],
+            [[f"<code>{u['number']}</code> {html.escape(u['name'])}",
+              html.escape(BY_KEY[u["terminal"]].name),
+              cell("yes"), cell("no")] for u in unhonoured]))
+        notes = {u["note"].strip() for u in unhonoured if u.get("note")}
+        if notes:
+            add("<ul>" + "".join(f"<li>{html.escape(n)}</li>" for n in notes) + "</ul>")
 
     disagreements = cross_check(platforms, caps, vt_features, keys)
     if vt_features:

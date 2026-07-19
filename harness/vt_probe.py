@@ -50,7 +50,8 @@ class Tty:
         termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.saved)
 
     def write(self, text: str) -> None:
-        os.write(self.fd, text.encode("ascii"))
+        # UTF-8, not ASCII: the RTL probe writes Hebrew.
+        os.write(self.fd, text.encode("utf-8"))
 
     def drain(self) -> None:
         """Discard anything already pending, so a reply cannot be mistaken."""
@@ -154,6 +155,72 @@ def probe_locator(term: Tty) -> dict:
     return result
 
 
+#: Hebrew letter alef. Strongly right-to-left by Unicode bidi class, one column wide.
+HEBREW_ALEF = "א"
+
+
+def _cursor_column(term: Tty) -> int | None:
+    """Return the cursor's column via DSR 6, or None if the terminal does not answer."""
+    reply = term.ask("\x1b[6n", "R")
+    match = re.match(r"\x1b\[\??(\d+);(\d+)(?:;(\d+))?R", reply)
+    return int(match.group(2)) if match else None
+
+
+def probe_rtl(term: Tty) -> dict:
+    """Probe whether DECRLM (mode 34) actually drives right-to-left cursor movement.
+
+    Announcing a mode and honouring it are different things, and DECRQM cannot tell them
+    apart: it reports what the terminal recognises, not what the terminal does. The only
+    way to separate the two is to set the mode and watch where the cursor goes.
+
+    The test writes one Hebrew letter twice from the same column, once with DECRLM reset
+    and once with it set, and compares the cursor advance:
+
+        reset -> +1 and set -> -1   the mode is honoured
+        reset -> +1 and set -> +1   the mode is recognised but does nothing
+        no reply at all             the terminal does not answer DSR 6
+
+    Measuring the delta twice rather than once matters: it distinguishes "moves left"
+    from "did not move", and it proves the terminal was responding in the first place.
+    """
+    result = {
+        "answers_dsr": False, "delta_ltr": None, "delta_rtl": None,
+        "rtl_honoured": False, "raw": {},
+    }
+
+    def advance() -> int | None:
+        """Column delta produced by writing one Hebrew letter."""
+        term.write("\x1b[1;40H")            # a known column, clear of both margins
+        before = _cursor_column(term)
+        if before is None:
+            return None
+        term.write(HEBREW_ALEF)
+        after = _cursor_column(term)
+        return None if after is None else after - before
+
+    result["delta_ltr"] = advance()
+    if result["delta_ltr"] is None:
+        term.write("\x1b[2K\x1b[H")
+        return result
+    result["answers_dsr"] = True
+
+    term.write("\x1b[?34h")                 # DECRLM: right-to-left mode
+    result["delta_rtl"] = advance()
+    term.write("\x1b[?34l")                 # restore
+    term.write("\x1b[2K\x1b[H")             # leave the line as we found it
+    term.drain()
+
+    # Honoured means the direction actually reversed, not merely that something changed.
+    result["rtl_honoured"] = (
+        result["delta_rtl"] is not None
+        and result["delta_ltr"] > 0 > result["delta_rtl"]
+    )
+    result["raw"]["note"] = (
+        f"one Hebrew letter from column 40: {result['delta_ltr']} column(s) with DECRLM "
+        f"reset, {result['delta_rtl']} with it set")
+    return result
+
+
 def probe_page_sequences(term: Tty) -> dict:
     """Check that NP and PP move between pages, not just PPA."""
     result = {"np_pp": False, "raw": {}}
@@ -187,6 +254,7 @@ def main() -> int:
             results["pages"] = probe_pages(term)
             results["page_sequences"] = probe_page_sequences(term)
             results["locator"] = probe_locator(term)
+            results["rtl"] = probe_rtl(term)
     except Exception as error:           # a probe must never fail the whole run
         results["error"] = f"{type(error).__name__}: {error}"
     finally:

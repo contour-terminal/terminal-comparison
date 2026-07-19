@@ -154,6 +154,32 @@ vt_probes:
       pointing device answered. Under a headless display that is the expected reply, so
       this row separates "implements the locator" from "a device was there".
 
+  - id: rtl_honoured
+    path: rtl.rtl_honoured
+    name: DECRLM actually moves the cursor leftwards
+    category: bidi
+    caveat: >-
+      Functional, not declarative. The probe writes one Hebrew letter from column 40 with
+      DECRLM (mode 34) reset and again with it set, and compares the cursor advance. Only
+      a reversal counts: +1 then -1 is honoured, +1 then +1 means the mode is recognised
+      and does nothing. Measuring both directions also proves the terminal was answering
+      DSR 6 at all, so a "no" here cannot be a silent timeout.
+
+# --- modes whose DECRQM answer can be checked against actual behaviour --------------
+# DECRQM reports what a terminal *recognises*, which is not the same as what it *does*.
+# Where a functional probe exists for the same feature, the two are compared and any
+# terminal that declares support without acting on it is named. This is the failure mode
+# a mode query cannot see by construction.
+mode_behaviour_checks:
+  - number: 34
+    name: DECRLM (right-to-left mode)
+    probe_path: rtl.rtl_honoured
+    note: >-
+      Declaring DECRLM tells an application it may rely on right-to-left layout. A
+      terminal that answers DECRQM affirmatively and then advances the cursor rightwards
+      is worse than one that answers "not recognised", because the application has no way
+      to find out.
+
 # --- DEC private modes, read from terminal_results.modes ---------------------------
 # A terminal that answers no DECRQM at all is rendered "n/a" rather than "?": the probe
 # asked and got silence, which is a fact about the terminal. Konsole is the case here --

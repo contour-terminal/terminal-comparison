@@ -22,5 +22,14 @@
     "raw": {
       "decrqlp": "''"
     }
+  },
+  "rtl": {
+    "answers_dsr": true,
+    "delta_ltr": 1,
+    "delta_rtl": 1,
+    "rtl_honoured": false,
+    "raw": {
+      "note": "one Hebrew letter from column 40: 1 column(s) with DECRLM reset, 1 with it set"
+    }
   }
 }

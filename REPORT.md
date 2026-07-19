@@ -5,7 +5,7 @@ Measurements are reproducible: see [README.md](README.md).
 
 ## How this was produced
 
-- **linux** — 2026-07-19 11:28:53 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
+- **linux** — 2026-07-19 11:54:50 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
   - ucs-detect pinned at `ea4510a4bc6e`, patches: `0001-vs15-must-not-narrow.patch` (076283770c66aa4f)
   - arguments: `--probe-silently --no-final-summary --limit-category-time 240 --detect-all-dec-modes`
 
@@ -13,15 +13,15 @@ Measurements are reproducible: see [README.md](README.md).
 
 | Terminal | Version | Platform | Display | Status | Run time |
 |---|---|---|---|---|---|
-| Contour | `0.7.0-lead-out-1269f24a` | linux | x11 | ok | 31.0s |
-| kitty | `0.47.1` | linux | x11 | ok | 99.6s |
+| Contour | `0.7.0-lead-out-1269f24a` | linux | x11 | ok | 30.5s |
+| kitty | `0.47.1` | linux | x11 | ok | 95.6s |
 | Ghostty | `1.3.1` | linux | x11 | ok | 7.0s |
 | WezTerm | `wezterm 20260716_195552_76b606ec` | linux | x11 | ok | 43.5s |
 | Konsole | `26.04.3` | linux | x11 | ok | 4.0s |
-| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 50.0s |
-| Alacritty | `0.17.0` | linux | x11 | ok | 6.5s |
+| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 54.5s |
+| Alacritty | `0.17.0` | linux | x11 | ok | 7.0s |
 | xterm | `406` | linux | x11 | ok | 4.5s |
-| foot | `1.27.0` | linux | wayland | ok | 5.0s |
+| foot | `1.27.0` | linux | wayland | ok | 5.5s |
 
 ### Not measured here
 
@@ -130,6 +130,7 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 | NP / PP (next and preceding page) | yes | no | no | no | no | no | no | no | no |
 | DEC locator (DECELR / DECRQLP) | yes | no | no | no | no | no | no | no | no |
 | Locator reports a position | yes | no | no | no | no | no | no | no | no |
+| DECRLM actually moves the cursor leftwards | no | no | no | no | no | no | no | no | no |
 
 **Caveats**
 
@@ -138,6 +139,7 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 - **Pages reached** — The walk stops at 32, well above any implementation found, and the probe records whether it hit that ceiling. Contour reaches 15, which matches its source exactly: MaxPageCount is 16 and the last index is reserved for the alternate screen, leaving 15 DEC-addressable pages. An earlier ceiling of 8 understated it, and the number here was the probe's limit rather than the terminal's.
 - **DEC locator (DECELR / DECRQLP)** — A terminal with no locator answers nothing at all. xterm's case is a build option, not a runtime one: OPT_DEC_LOCATOR is `#undef` by default in xtermcfg.h and needs `--enable-dec-locator` at configure time, so a stock xterm has no locator code compiled in and its "no" is correct for the binary measured here, while the documented row records that the implementation exists in the source.
 - **Locator reports a position** — DECLRP with Pe=0 means "locator unavailable" -- the sequence is implemented but no pointing device answered. Under a headless display that is the expected reply, so this row separates "implements the locator" from "a device was there".
+- **DECRLM actually moves the cursor leftwards** — Functional, not declarative. The probe writes one Hebrew letter from column 40 with DECRLM (mode 34) reset and again with it set, and compares the cursor advance. Only a reversal counts: +1 then -1 is honoured, +1 then +1 means the mode is recognised and does nothing. Measuring both directions also proves the terminal was answering DSR 6 at all, so a "no" here cannot be a silent timeout.
 
 ### Every DEC private mode any terminal supports
 
@@ -250,6 +252,16 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 | `8452` — Sixel scrolling leaves cursor to right of graphic | yes | no | no | yes | yes | n/a | no | no | yes |
 | `9001` — win32-input-mode | yes | no | no | no | yes | n/a | no | no | no |
 | `737769` — Input Method Editor (IME) mode | ? | no | ? | yes | ? | n/a | ? | ? | ? |
+
+## Modes a terminal declares but does not honour
+
+DECRQM reports what a terminal *recognises*; a functional probe reports what it *does*. Where this report has both for the same feature, the two are compared. A terminal listed here answers a mode query affirmatively and then does not act on the mode -- which is the one failure a mode query cannot detect by construction, and is worse for an application than an honest "not recognised", because there is nothing left to test.
+
+| Mode | Terminal | DECRQM says | Behaviour |
+|---|---|---|---|
+| `34` — DECRLM (right-to-left mode) | Contour | supported | not honoured |
+
+- Declaring DECRLM tells an application it may rely on right-to-left layout. A terminal that answers DECRQM affirmatively and then advances the cursor rightwards is worse than one that answers "not recognised", because the application has no way to find out.
 
 ## Where measurement and documentation disagree
 
