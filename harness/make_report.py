@@ -44,6 +44,7 @@ class PlatformRun:
     provenance: dict
     runs: list[dict]
     yamls: dict[str, dict]          # terminal key -> parsed ucs-detect YAML
+    probes: dict[str, dict]         # terminal key -> parsed vt_probe.py JSON
 
 
 def load_platforms() -> list[PlatformRun]:
@@ -52,15 +53,18 @@ def load_platforms() -> list[PlatformRun]:
     for summary_path in sorted(RESULTS.glob("*/run-summary.json")):
         directory = summary_path.parent
         summary = json.loads(summary_path.read_text())
-        yamls = {}
+        yamls, probes = {}, {}
         for record in summary["runs"]:
-            if not record.get("yaml"):
-                continue
-            path = directory / record["yaml"]
-            if path.exists():
-                yamls[record["terminal"]] = yaml.safe_load(path.read_text())
+            if record.get("yaml"):
+                path = directory / record["yaml"]
+                if path.exists():
+                    yamls[record["terminal"]] = yaml.safe_load(path.read_text())
+            if record.get("vtprobe"):
+                path = directory / record["vtprobe"]
+                if path.exists():
+                    probes[record["terminal"]] = json.loads(path.read_text())
         out.append(PlatformRun(directory.name, summary["provenance"],
-                               summary["runs"], yamls))
+                               summary["runs"], yamls, probes))
     return out
 
 
@@ -101,6 +105,49 @@ def mode_value(doc: dict, number: int) -> str:
     if entry is None:
         return "unknown"
     return "yes" if entry.get("supported") else "no"
+
+
+def probe_result(probe: dict | None, spec: dict) -> str:
+    """Resolve one VT probe row to yes/no/unknown, or a number rendered as text."""
+    if not probe:
+        return "unknown"
+    value = probe
+    for part in spec["path"].split("."):
+        if not isinstance(value, dict) or part not in value:
+            return "unknown"
+        value = value[part]
+    if spec.get("numeric"):
+        return str(value)
+    if value is None:
+        return "unknown"
+    return "yes" if value else "no"
+
+
+def cross_check(platforms, caps, vt_features, keys) -> list[dict]:
+    """Compare the measured probes against the documented matrix, row by row.
+
+    A disagreement is not necessarily an error in either half. The usual cause is a
+    feature that is implemented but ships disabled, which the documented table records as
+    present and the probe records as absent. Printing them is more useful than hiding
+    them, and computing them means the list cannot go stale.
+    """
+    rows = {row["id"]: row for row in vt_features}
+    out = []
+    for check in caps.get("cross_checks") or []:
+        row = rows.get(check["row"])
+        if row is None:
+            continue
+        for key in keys:
+            doc_verdict = (row.get("support") or {}).get(key, "unknown")
+            doc = next((run.yamls[key] for run in platforms if key in run.yamls), None)
+            if doc is None:
+                continue
+            measured = probe_value(doc, {"field": check["probe_field"]})
+            if measured in ("yes", "no") and doc_verdict in ("yes", "no") \
+                    and measured != doc_verdict:
+                out.append({"feature": row["name"], "terminal": key,
+                            "measured": measured, "documented": doc_verdict})
+    return out
 
 
 def all_modes(platforms: list[PlatformRun], keys: list[str]) -> list[tuple[int, str]]:
@@ -270,6 +317,52 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
     add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
     add("")
 
+    mouse = caps.get("mouse_modes") or []
+    if mouse:
+        add("### Mouse reporting modes (DECRQM)")
+        add("")
+        rows = []
+        for mode in mouse:
+            label = f"`{mode['number']}` — {mode['name']}"
+            row = [label]
+            for key in keys:
+                doc = next((p.yamls[key] for p in platforms if key in p.yamls), None)
+                row.append(SUPPORT_MARK[mode_value(doc, mode["number"])][2] if doc else "?")
+            rows.append(row)
+        add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+        add("")
+        for mode in mouse:
+            if mode.get("note"):
+                add(f"- **{mode['number']}** — {mode['note'].strip()}")
+        add("")
+
+    probes = caps.get("vt_probes") or []
+    if probes and any(p.probes for p in platforms):
+        add("## Page memory and the DEC locator (measured by probe)")
+        add("")
+        add("Neither is a DEC private mode, so DECRQM cannot answer for them. These rows "
+            "come from `harness/vt_probe.py`, which uses the sequence inside the terminal "
+            "and reads the reply.")
+        add("")
+        rows, notes = [], []
+        for spec in probes:
+            row = [spec["name"]]
+            for key in keys:
+                probe = next((p.probes[key] for p in platforms if key in p.probes), None)
+                verdict = probe_result(probe, spec)
+                row.append(verdict if spec.get("numeric")
+                           else SUPPORT_MARK.get(verdict, SUPPORT_MARK["unknown"])[2])
+            rows.append(row)
+            if spec.get("caveat"):
+                notes.append(f"- **{spec['name']}** — {spec['caveat'].strip()}")
+        add(md_table(["Feature"] + [BY_KEY[k].name for k in keys], rows))
+        add("")
+        if notes:
+            add("**Caveats**")
+            add("")
+            lines.extend(notes)
+            add("")
+
     every = all_modes(platforms, keys)
     if every:
         add("### Every DEC private mode any terminal supports")
@@ -286,6 +379,32 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
             rows.append(row)
         add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
         add("")
+
+    disagreements = cross_check(platforms, caps, vt_features, keys)
+    if vt_features:
+        add("## Where measurement and documentation disagree")
+        add("")
+        if not disagreements:
+            add("Nothing: every feature covered by both a runtime probe and the "
+                "documented matrix agrees.")
+            add("")
+        else:
+            add(f"{len(disagreements)} of the features covered by both a runtime probe "
+                "and the documented matrix disagree. Every case so far runs the same way "
+                "— the source says yes, the running terminal says no — and has one of two "
+                "causes. Either the feature ships **disabled** (xterm answers the Sixel "
+                "probe only at an emulation level that enables it; xterm and Alacritty "
+                "gate OSC 52), or it is implemented but **not advertised**: the underline "
+                "probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled "
+                "underlines without answering the capability query. In both cases the "
+                "documented column is the better guide to what the terminal can do, and "
+                "the measured column to what it will admit to.")
+            add("")
+            add(md_table(
+                ["Feature", "Terminal", "Measured", "Documented"],
+                [[d["feature"], BY_KEY[d["terminal"]].name,
+                  d["measured"], d["documented"]] for d in disagreements]))
+            add("")
 
     # ---- curated matrices
     for title, features, blurb in (
@@ -539,6 +658,45 @@ from 0/158 to 158/158.</p></div>""")
         rows.append(row)
     add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
 
+    mouse = caps.get("mouse_modes") or []
+    if mouse:
+        add("<h3>Mouse reporting modes (DECRQM)</h3>")
+        rows = []
+        for mode in mouse:
+            label = (f"<code>{mode['number']}</code> "
+                     f"{html.escape(mode['name'])}")
+            if mode.get("note"):
+                label += f'<br><span class="note">{html.escape(mode["note"].strip())}</span>'
+            row = [label]
+            for key in keys:
+                doc = next((p.yamls[key] for p in platforms if key in p.yamls), None)
+                row.append(cell(mode_value(doc, mode["number"])) if doc else cell("unknown"))
+            rows.append(row)
+        add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+
+    probes = caps.get("vt_probes") or []
+    if probes and any(p.probes for p in platforms):
+        add("<h2>Page memory and the DEC locator "
+            "<span class='note'>(measured by probe)</span></h2>")
+        add('<p class="note">Neither is a DEC private mode, so DECRQM cannot answer for '
+            "them. These rows come from <code>harness/vt_probe.py</code>, which uses the "
+            "sequence inside the terminal and reads the reply.</p>")
+        rows, notes = [], []
+        for spec in probes:
+            row = [html.escape(spec["name"])]
+            for key in keys:
+                probe = next((p.probes[key] for p in platforms if key in p.probes), None)
+                verdict = probe_result(probe, spec)
+                row.append(f'<span class="num">{html.escape(verdict)}</span>'
+                           if spec.get("numeric") else cell(verdict))
+            rows.append(row)
+            if spec.get("caveat"):
+                notes.append(f"<li><strong>{html.escape(spec['name'])}</strong> — "
+                             f"{html.escape(spec['caveat'].strip())}</li>")
+        add(html_table(["Feature"] + [BY_KEY[k].name for k in keys], rows))
+        if notes:
+            add("<h3>Caveats</h3><ul>" + "".join(notes) + "</ul>")
+
     every = all_modes(platforms, keys)
     if every:
         add("<h3>Every DEC private mode any terminal supports</h3>")
@@ -556,6 +714,29 @@ from 0/158 to 158/158.</p></div>""")
                 row.append(cell(mode_value(doc, number)) if doc else cell("unknown"))
             rows.append(row)
         add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+
+    disagreements = cross_check(platforms, caps, vt_features, keys)
+    if vt_features:
+        add("<h2>Where measurement and documentation disagree</h2>")
+        if not disagreements:
+            add('<p class="note">Nothing: every feature covered by both a runtime probe '
+                "and the documented matrix agrees.</p>")
+        else:
+            add(f'<p class="note">{len(disagreements)} of the features covered by both a '
+                "runtime probe and the documented matrix disagree. Every case so far runs "
+                "the same way &mdash; the source says yes, the running terminal says no "
+                "&mdash; and has one of two causes. Either the feature ships "
+                "<strong>disabled</strong> (xterm answers the Sixel probe only at an "
+                "emulation level that enables it; xterm and Alacritty gate OSC 52), or it "
+                "is implemented but <strong>not advertised</strong>: the underline probes "
+                "ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled underlines "
+                "without answering the capability query. In both cases the documented "
+                "column is the better guide to what the terminal can do, and the measured "
+                "column to what it will admit to.</p>")
+            add(html_table(
+                ["Feature", "Terminal", "Measured", "Documented"],
+                [[html.escape(d["feature"]), html.escape(BY_KEY[d["terminal"]].name),
+                  cell(d["measured"]), cell(d["documented"])] for d in disagreements]))
 
     # ---- curated
     all_keys = [t.key for t in TERMINALS]

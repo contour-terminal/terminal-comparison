@@ -52,13 +52,15 @@ def shell_quote(value: str) -> str:
 
 
 def run_one(term: Terminal, display, outdir: pathlib.Path,
-            ucs_args: list[str], timeout: int) -> dict:
+            ucs_args: list[str], timeout: int, vt_probe: bool = True) -> dict:
     """Run ucs-detect inside *term* and return a result record."""
     yaml_path = outdir / f"{term.key}.yaml"
     rc_path = outdir / f"{term.key}.rc"
     term_log = outdir / f"{term.key}.term.log"
-    for stale in (yaml_path, rc_path):
-        stale.unlink(missing_ok=True)
+    probe_path = outdir / f"{term.key}.vtprobe.json" if vt_probe else None
+    for stale in (yaml_path, rc_path, probe_path):
+        if stale is not None:
+            stale.unlink(missing_ok=True)
 
     launch = term.launch_for()
     if launch is not None and launch.applescript_app:
@@ -85,7 +87,17 @@ def run_one(term: Terminal, display, outdir: pathlib.Path,
         "--set-software-name", shell_quote(term.name),
         "--set-software-version", shell_quote(version),
     ])
-    script = f"{inner}; echo $? > {shell_quote(str(rc_path))}"
+    # The VT probe runs in the same launch, after ucs-detect, on the same tty. It costs
+    # under a second and covers what DECRQM cannot answer: page memory and the DEC
+    # locator. Its exit status is deliberately ignored -- a probe that fails must not
+    # invalidate the Unicode measurements.
+    parts = [inner, "rc=$?"]
+    if probe_path is not None:
+        parts.append(f"{shell_quote(sys.executable)} "
+                     f"{shell_quote(str(HERE / 'vt_probe.py'))} "
+                     f"--out {shell_quote(str(probe_path))} || true")
+    parts.append(f"echo $rc > {shell_quote(str(rc_path))}")
+    script = "; ".join(parts)
 
     argv = term.argv(["sh", "-c", script])
     if current_platform() == "linux":
@@ -137,6 +149,8 @@ def run_one(term: Terminal, display, outdir: pathlib.Path,
         "status": status, "exit_code": rc,
         "elapsed_sec": round(time.monotonic() - started, 1),
         "yaml": yaml_path.name if yaml_path.exists() else None,
+        "vtprobe": (probe_path.name
+                    if probe_path is not None and probe_path.exists() else None),
     }
 
 
@@ -177,6 +191,8 @@ def main() -> int:
                         help="pass --all to ucs-detect (full tables, not contested)")
     parser.add_argument("--no-languages", action="store_true")
     parser.add_argument("--limit-category-time", type=int, default=240)
+    parser.add_argument("--no-vt-probe", action="store_true",
+                        help="skip the extra VT probe (page memory, DEC locator)")
     parser.add_argument("--all-dec-modes", action="store_true",
                         help="probe every known DEC private mode, not just the "
                              "notable subset (slower, but fills the mode table)")
@@ -240,7 +256,8 @@ def main() -> int:
         try:
             for term in group:
                 print(f">>> {term.key} ...", end="", flush=True)
-                record = run_one(term, display, outdir, ucs_args, args.timeout)
+                record = run_one(term, display, outdir, ucs_args, args.timeout,
+                                 vt_probe=not args.no_vt_probe)
                 results.append(record)
                 print(f" {record['status']} ({record['elapsed_sec']}s)", flush=True)
         finally:

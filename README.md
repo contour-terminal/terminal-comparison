@@ -77,7 +77,29 @@ CONTOUR_BIN=/path/to/contour python3 harness/run_ucs_detect.py --outdir results/
 ```
 
 Useful flags: `--only <key>` (repeatable), `--test-only vs15`, `--all` (full Unicode
-tables instead of the contested subset), `--no-languages`.
+tables instead of the contested subset), `--no-languages`, `--all-dec-modes` (probe every
+known DEC private mode rather than the notable subset — this is what fills the mode
+tables), `--no-vt-probe`.
+
+Note that `--test-only` skips terminal fingerprinting entirely, so a run made with it
+produces **no** capability or DEC-mode data, only Unicode scores.
+
+### What gets measured, and how
+
+| Asked by | Covers |
+| --- | --- |
+| ucs-detect width measurement | Wide, narrow, VS15, VS16, ZWJ, flags, skin tone, languages |
+| ucs-detect capability probes | Sixel, kitty graphics/keyboard/clipboard, OSC 52, underline styles, DECRQSS … |
+| DECRQM (`--all-dec-modes`) | ~158 DEC private modes, including every mouse-reporting protocol from X10 (9) through SGR-pixel (1016), and Contour's passive mouse tracking (2029) |
+| `harness/vt_probe.py` | DEC page memory and the DEC locator |
+
+The last row exists because page memory and the locator are **not** DEC private modes, so
+DECRQM cannot answer for them. The probe uses the sequences instead: it asks DECXCPR
+(`CSI ? 6 n`) whether the reply carries a page number, moves with PPA and NP/PP and
+re-asks to confirm the cursor actually changed page, and enables the locator with DECELR
+before requesting a position with DECRQLP. Each probe restores what it changed, and each
+read is bounded by a timeout, because a terminal without the sequence simply says nothing.
+The raw replies are kept in the JSON so a verdict can be re-checked by hand.
 
 ### How the measurement is isolated
 
@@ -116,17 +138,22 @@ scaffolded but not implemented.
 ## Layout
 
 ```
-harness/          measurement and report generation
-  terminals.py      registry: one row per terminal, per platform
-  display.py        off-screen display servers (Linux)
-  run_ucs_detect.py the driver
-  make_report.py    results + data -> REPORT.md and docs/index.html
+harness/            measurement and report generation
+  terminals.py        registry: one row per terminal, per platform
+  display.py          off-screen display servers (Linux)
+  run_ucs_detect.py   the driver
+  vt_probe.py         probes what DECRQM cannot answer; runs inside the terminal
+  make_report.py      results + data -> REPORT.md and docs/index.html
+  curated.py          loads data/, normalising YAML's yes/no-as-boolean trap
+  validate_data.py    gate: every row covers every terminal, with evidence
+  compare_runs.py     compare two runs to show a result is reproducible
   setup-ucs-detect.sh
-patches/          corrections applied to the pinned measurement tool
-data/             curated matrices and the definition of what gets reported
-results/<platform>/  recorded runs, one YAML per terminal, plus run-summary.json
-docs/             the published site (GitHub Pages)
-REPORT.md         the same report as markdown
+patches/            corrections applied to the pinned measurement tool
+data/               curated matrices and the definition of what gets reported
+results/<platform>/ recorded runs: one YAML and one probe JSON per terminal,
+                    plus run-summary.json
+docs/               the published site (GitHub Pages)
+REPORT.md           the same report as markdown
 ```
 
 `data/` holds the parts that cannot be measured: `vt-features.yaml` and

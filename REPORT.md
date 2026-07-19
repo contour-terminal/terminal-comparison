@@ -5,7 +5,7 @@ Measurements are reproducible: see [README.md](README.md).
 
 ## How this was produced
 
-- **linux** — 2026-07-19 10:50:54 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
+- **linux** — 2026-07-19 11:03:15 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
   - ucs-detect pinned at `ea4510a4bc6e`, patches: `0001-vs15-must-not-narrow.patch` (076283770c66aa4f)
   - arguments: `--probe-silently --no-final-summary --limit-category-time 240 --detect-all-dec-modes`
 
@@ -14,14 +14,14 @@ Measurements are reproducible: see [README.md](README.md).
 | Terminal | Version | Platform | Display | Status | Run time |
 |---|---|---|---|---|---|
 | Contour | `0.7.0-lead-out-1269f24a` | linux | x11 | ok | 30.5s |
-| kitty | `0.47.1` | linux | x11 | ok | 94.1s |
-| Ghostty | `1.3.1` | linux | x11 | ok | 4.5s |
-| WezTerm | `wezterm 20260716_195552_76b606ec` | linux | x11 | ok | 42.0s |
-| Konsole | `26.04.3` | linux | x11 | ok | 3.0s |
-| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 51.5s |
-| Alacritty | `0.17.0` | linux | x11 | ok | 5.0s |
-| xterm | `406` | linux | x11 | ok | 4.0s |
-| foot | `1.27.0` | linux | wayland | ok | 3.5s |
+| kitty | `0.47.1` | linux | x11 | ok | 96.6s |
+| Ghostty | `1.3.1` | linux | x11 | ok | 7.0s |
+| WezTerm | `wezterm 20260716_195552_76b606ec` | linux | x11 | ok | 43.5s |
+| Konsole | `26.04.3` | linux | x11 | ok | 4.0s |
+| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 62.5s |
+| Alacritty | `0.17.0` | linux | x11 | ok | 6.5s |
+| xterm | `406` | linux | x11 | ok | 5.0s |
+| foot | `1.27.0` | linux | wayland | ok | 5.0s |
 
 ### Not measured here
 
@@ -72,15 +72,17 @@ Answered by the terminal during the run. A dash can mean *not supported*, *not e
 | Kitty notifications | yes | yes | no | no | no | no | no | no | no |
 | Kitty pointer shapes (OSC 22) | yes | yes | no | no | no | no | no | no | no |
 | OSC 52 clipboard | yes | yes | yes | yes | yes | no | no | no | no |
-| Styled underlines (CSI 4:x) | yes | yes | no | yes | yes | no | no | no | no |
-| Underline colour (SGR 58) | yes | yes | no | yes | yes | no | no | no | no |
+| Styled underlines (CSI 4:x) | yes | yes | yes | yes | yes | no | no | no | no |
+| Underline colour (SGR 58) | yes | yes | yes | yes | yes | no | no | no | no |
 | DECRQSS (request selection or setting) | yes | yes | yes | yes | yes | no | yes | no | yes |
 | DECRQCRA (checksum of rectangular area) | yes | no | no | no | no | no | no | no | no |
 
 **Caveats**
 
 - **Sixel graphics** — xterm implements Sixel but answers this probe only when started with an emulation level that enables it (for example `-ti vt340`); the harness starts it with defaults, so its "no" reflects the default configuration, not a missing implementation.
-- **OSC 52 clipboard** — Several terminals ship OSC 52 disabled by default for security reasons, so a "no" here may be policy rather than absence.
+- **OSC 52 clipboard** — Detected by what the terminal advertises -- DA1 extension 52 and the XTGETTCAP `Ms` capability -- not by writing to the clipboard, which would raise a permission prompt. A terminal that implements OSC 52 without advertising it, or that ships it disabled for security reasons, therefore reads as "no".
+- **Styled underlines (CSI 4:x)** — Asked through XTGETTCAP, so this measures whether the terminal *advertises* the capability, not whether it draws a curly underline. Several terminals that render them -- VTE, Konsole and Alacritty among the ones measured here -- do not answer the capability query, and the documented matrix records them as supporting the feature. Read a "no" as "not advertised".
+- **Underline colour (SGR 58)** — Asked through XTGETTCAP, with the same caveat as styled underlines: this is what the terminal advertises, not what it renders.
 - **DECRQCRA (checksum of rectangular area)** — The reply's final byte is contested: xterm answers `* y`, and a probe expecting `$ y` records a false negative. Treat a "no" here as unconfirmed rather than absent.
 
 ### DEC private modes (DECRQM)
@@ -91,11 +93,48 @@ Answered by the terminal during the run. A dash can mean *not supported*, *not e
 | 2026 — Synchronized output | yes | yes | yes | yes | yes | ? | no | yes | no |
 | 2048 — In-band resize notification | yes | yes | yes | yes | no | ? | no | no | no |
 | 2004 — Bracketed paste | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| 1004 — Focus in/out events | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| 1006 — SGR mouse reporting | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| 1016 — SGR-pixel mouse reporting | yes | yes | yes | yes | yes | ? | no | no | yes |
 | 1049 — Alternate screen buffer | yes | yes | yes | yes | no | ? | yes | yes | yes |
 | 7 — Auto-wrap (DECAWM) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+
+### Mouse reporting modes (DECRQM)
+
+| Mode | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
+|---|---|---|---|---|---|---|---|---|---|
+| `9` — X10 compatibility mouse reporting | yes | no | yes | no | no | ? | yes | no | yes |
+| `1000` — VT200 mouse — report button press and release | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| `1001` — Highlight mouse tracking | yes | no | no | no | no | ? | yes | no | yes |
+| `1002` — Button-event tracking (motion while pressed) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| `1003` — Any-event tracking (motion always) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| `1004` — Focus in/out events | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| `1005` — UTF-8 extended coordinates | yes | yes | yes | no | yes | ? | no | yes | yes |
+| `1006` — SGR extended coordinates | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| `1007` — Alternate-scroll mode | yes | no | yes | yes | no | ? | yes | yes | yes |
+| `1015` — urxvt extended coordinates | yes | no | yes | yes | no | ? | no | no | yes |
+| `1016` — SGR-pixel coordinates | yes | yes | yes | yes | yes | ? | no | no | yes |
+| `2029` — Passive mouse tracking (Contour extension) | yes | no | no | no | no | ? | no | no | no |
+
+- **2029** — Lets an application receive mouse position without taking the mouse away from the user's selection. Contour's own extension; no other terminal implements it yet.
+
+## Page memory and the DEC locator (measured by probe)
+
+Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come from `harness/vt_probe.py`, which uses the sequence inside the terminal and reads the reply.
+
+| Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
+|---|---|---|---|---|---|---|---|---|---|
+| DECXCPR (extended cursor position report) | yes | yes | no | no | no | no | yes | no | yes |
+| Reports a page number | yes | no | no | no | no | no | yes | no | yes |
+| DEC page memory (more than one page) | yes | no | no | no | no | no | no | no | no |
+| Pages reached (probe stops at 8) | 8 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| NP / PP (next and preceding page) | yes | no | no | no | no | no | no | no | no |
+| DEC locator (DECELR / DECRQLP) | yes | no | no | no | no | no | no | no | no |
+| Locator reports a position | yes | no | no | no | no | no | no | no | no |
+
+**Caveats**
+
+- **Reports a page number** — A terminal can answer DECXCPR without the third (page) parameter. That is recorded here as "no": it answers the report but has no page memory to describe.
+- **DEC page memory (more than one page)** — Confirmed by moving with PPA and asking DECXCPR which page the cursor is on, so a terminal that accepts PPA and ignores it is not counted. The probe stops looking after page 8, so "pages reached" is a floor, not a maximum.
+- **DEC locator (DECELR / DECRQLP)** — A terminal with no locator answers nothing at all. xterm implements the locator but did not answer under the harness's default settings, which start it at its default conformance level; treat its "no" as unconfirmed rather than absent.
+- **Locator reports a position** — DECLRP with Pe=0 means "locator unavailable" -- the sequence is implemented but no pointing device answered. Under a headless display that is the expected reply, so this row separates "implements the locator" from "a device was there".
 
 ### Every DEC private mode any terminal supports
 
@@ -209,6 +248,22 @@ Answered by the terminal during the run. A dash can mean *not supported*, *not e
 | `9001` — win32-input-mode | yes | no | no | no | yes | ? | no | no | no |
 | `737769` — Input Method Editor (IME) mode | ? | no | ? | yes | ? | ? | ? | ? | ? |
 
+## Where measurement and documentation disagree
+
+9 of the features covered by both a runtime probe and the documented matrix disagree. Every case so far runs the same way — the source says yes, the running terminal says no — and has one of two causes. Either the feature ships **disabled** (xterm answers the Sixel probe only at an emulation level that enables it; xterm and Alacritty gate OSC 52), or it is implemented but **not advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled underlines without answering the capability query. In both cases the documented column is the better guide to what the terminal can do, and the measured column to what it will admit to.
+
+| Feature | Terminal | Measured | Documented |
+|---|---|---|---|
+| Sixel graphics | xterm | no | yes |
+| OSC 52 clipboard set/query | Alacritty | no | yes |
+| OSC 52 clipboard set/query | xterm | no | yes |
+| SGR 58/59 underline color | Konsole | no | yes |
+| SGR 58/59 underline color | GNOME Terminal (VTE) | no | yes |
+| SGR 58/59 underline color | Alacritty | no | yes |
+| Extended underline styles via CSI 4:Ps m (curly/dotted/dashed/double) | Konsole | no | yes |
+| Extended underline styles via CSI 4:Ps m (curly/dotted/dashed/double) | GNOME Terminal (VTE) | no | yes |
+| Extended underline styles via CSI 4:Ps m (curly/dotted/dashed/double) | Alacritty | no | yes |
+
 ## VT sequences and extensions (documented)
 
 Compiled from each terminal's source tree and documentation rather than measured, so it also covers terminals this machine cannot run. Where a row overlaps the measured tables above -- the DEC mode rows especially -- the two were derived independently and can be read against each other.
@@ -298,82 +353,82 @@ Compiled from official documentation and source.
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Screen-reader / a11y support | yes | no | partial | no | no | yes | yes | no | no | ? | no | partial | ? |
-| Caret (cursor) position reporting to a11y APIs | yes | no | partial | no | no | yes | yes | no | no | ? | no | ? | ? |
+| Screen-reader / a11y support | yes | no | partial | no | no | yes | yes | no | no | yes | no | partial | partial |
+| Caret (cursor) position reporting to a11y APIs | yes | no | partial | no | no | yes | yes | no | no | yes | no | ? | ? |
 
 ### Config
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Configuration format | YAML (contour.yml) | Custom key-value kitty.conf | Custom flat key = value text format | INI (foot.ini, [section] key=value) | Lua (~/.wezterm.lua) | KConfig INI-style (konsolerc + per-profile .profile files) | GSettings/dconf (binary key-value database under the org.gnome.Terminal schema), not a text config file | TOML (alacritty.toml) | X resources (~/.Xresources, app-defaults / XrmDatabase) | unknown | Flat key=value text file (.minttyrc) | plist (native Preferences); profiles also as Dynamic Profiles JSON/XML | unknown |
-| Live config reload | yes | yes | yes | no | yes | yes | yes | yes | no | ? | partial | yes | ? |
-| GUI settings panel | yes | partial | no | no | no | yes | yes | no | partial | ? | yes | yes | ? |
-| Per-profile settings | yes | partial | no | partial | partial | yes | yes | no | no | ? | yes | yes | ? |
-| Theming / colour-scheme support | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? | yes | yes | ? |
+| Configuration format | YAML (contour.yml) | Custom key-value kitty.conf | Custom flat key = value text format | INI (foot.ini, [section] key=value) | Lua (~/.wezterm.lua) | KConfig INI-style (konsolerc + per-profile .profile files) | GSettings/dconf (binary key-value database under the org.gnome.Terminal schema), not a text config file | TOML (alacritty.toml) | X resources (~/.Xresources, app-defaults / XrmDatabase) | JSON (settings.json) | Flat key=value text file (.minttyrc) | plist (native Preferences); profiles also as Dynamic Profiles JSON/XML | Property List (.plist / .terminal) |
+| Live config reload | yes | yes | yes | no | yes | yes | yes | yes | no | yes | partial | yes | no |
+| GUI settings panel | yes | partial | no | no | no | yes | yes | no | partial | yes | yes | yes | yes |
+| Per-profile settings | yes | partial | no | partial | partial | yes | yes | no | no | yes | yes | yes | yes |
+| Theming / colour-scheme support | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 ### Interaction
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Search in scrollback | yes | yes | yes | yes | yes | yes | yes | yes | no | ? | yes | yes | ? |
-| URL/hyperlink click | yes | yes | yes | partial | yes | yes | yes | yes | partial | ? | yes | yes | ? |
-| Copy-on-select | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? | yes | yes | ? |
-| Rectangular (block) selection | yes | yes | yes | yes | yes | yes | yes | yes | partial | ? | yes | yes | ? |
-| Mouse reporting toggles | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? | yes | yes | ? |
-| IME / dead-key support | yes | yes | yes | yes | yes | yes | yes | partial | yes | ? | yes | yes | ? |
-| Keyboard-driven vi mode / copy mode | yes | partial | partial | no | yes | no | no | yes | no | ? | partial | yes | ? |
+| Search in scrollback | yes | yes | yes | yes | yes | yes | yes | yes | no | yes | yes | yes | yes |
+| URL/hyperlink click | yes | yes | yes | partial | yes | yes | yes | yes | partial | yes | yes | yes | yes |
+| Copy-on-select | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | no |
+| Rectangular (block) selection | yes | yes | yes | yes | yes | yes | yes | yes | partial | yes | yes | yes | yes |
+| Mouse reporting toggles | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| IME / dead-key support | yes | yes | yes | yes | yes | yes | yes | partial | yes | yes | yes | yes | yes |
+| Keyboard-driven vi mode / copy mode | yes | partial | partial | no | yes | no | no | yes | no | partial | partial | yes | no |
 
 ### Layout
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Tabs | yes | yes | yes | no | yes | yes | yes | no | no | ? | yes | yes | ? |
-| Split panes | yes | yes | yes | no | yes | yes | no | no | no | ? | no | yes | ? |
-| Tab/pane detach & reorder | yes | yes | yes | no | partial | yes | yes | no | no | ? | partial | yes | ? |
-| Quake/dropdown mode | no | yes | yes | no | no | no | no | no | no | ? | yes | yes | ? |
-| Fullscreen mode | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? | yes | yes | ? |
+| Tabs | yes | yes | yes | no | yes | yes | yes | no | no | yes | yes | yes | yes |
+| Split panes | yes | yes | yes | no | yes | yes | no | no | no | yes | no | yes | yes |
+| Tab/pane detach & reorder | yes | yes | yes | no | partial | yes | yes | no | no | yes | partial | yes | partial |
+| Quake/dropdown mode | no | yes | yes | no | no | no | no | no | no | yes | yes | yes | no |
+| Fullscreen mode | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 ### Other
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Sixel image display | yes | no | no | yes | yes | yes | partial | no | yes | ? | yes | yes | ? |
-| Kitty graphics protocol support | yes | yes | yes | no | yes | partial | no | no | no | ? | no | partial | ? |
-| Desktop notification support | yes | yes | yes | yes | yes | yes | partial | no | partial | ? | partial | yes | ? |
-| Ligature-aware cursor rendering | ? | yes | yes | no | partial | yes | no | no | no | ? | yes | yes | ? |
-| Blurred background / transparency | yes | yes | yes | yes | yes | yes | no | partial | no | ? | partial | yes | ? |
-| Tab colouring | yes | yes | partial | no | yes | yes | no | no | no | ? | partial | yes | ? |
-| Undercurl / styled underlines | yes | yes | yes | yes | yes | yes | yes | yes | no | ? | yes | yes | ? |
+| Sixel image display | yes | no | no | yes | yes | yes | partial | no | yes | yes | yes | yes | no |
+| Kitty graphics protocol support | yes | yes | yes | no | yes | partial | no | no | no | no | no | partial | no |
+| Desktop notification support | yes | yes | yes | yes | yes | yes | partial | no | partial | yes | partial | yes | no |
+| Ligature-aware cursor rendering | ? | yes | yes | no | partial | yes | no | no | no | yes | yes | yes | no |
+| Blurred background / transparency | yes | yes | yes | yes | yes | yes | no | partial | no | yes | partial | yes | yes |
+| Tab colouring | yes | yes | partial | no | yes | yes | no | no | no | yes | partial | yes | no |
+| Undercurl / styled underlines | yes | yes | yes | yes | yes | yes | yes | yes | no | yes | yes | yes | no |
 
 ### Platform
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Linux/X11 | yes | yes | yes | no | yes | yes | yes | yes | yes | ? | no | no | ? |
-| Linux/Wayland | yes | yes | yes | yes | yes | yes | yes | yes | no | ? | no | no | ? |
-| macOS | yes | yes | yes | no | yes | partial | no | yes | partial | ? | no | yes | ? |
-| Windows | yes | no | no | no | yes | partial | no | yes | no | ? | yes | no | ? |
-| BSD | yes | yes | partial | partial | yes | yes | yes | yes | yes | ? | no | no | ? |
+| Linux/X11 | yes | yes | yes | no | yes | yes | yes | yes | yes | no | no | no | no |
+| Linux/Wayland | yes | yes | yes | yes | yes | yes | yes | yes | no | no | no | no | no |
+| macOS | yes | yes | yes | no | yes | partial | no | yes | partial | no | no | yes | yes |
+| Windows | yes | no | no | no | yes | partial | no | yes | no | yes | yes | no | no |
+| BSD | yes | yes | partial | partial | yes | yes | yes | yes | yes | no | no | no | no |
 
 ### Rendering
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| GPU-accelerated rendering | yes | yes | yes | no | yes | no | partial | yes | no | ? | no | yes | ? |
-| GPU rendering API | Qt RHI (OpenGL, Vulkan, Metal, or Direct3D 11, selected by Qt's backend at runtime) | OpenGL 3.1+ (Linux, w/ extensions) / OpenGL 3.3 core (macOS) | Metal (macOS), OpenGL 4.3+ (Linux/BSD), WebGL (wasm) | none (software rendering via pixman + Wayland shm buffers) | OpenGL (default); optional WebGpu via wgpu (Vulkan/Metal/DX12); Software fallback | none - CPU/software rasterization via QWidget+QPainter (Qt raster paint engine) | GTK4 GSK scene graph (OpenGL 'NGL' renderer; Vulkan by default on Wayland since GTK 4.16) | OpenGL 3.3 core (GLES 2.0 fallback) | none (Xlib/Xft, CPU-rendered) | unknown | None — GDI raster (CPU); DirectWrite only for glyph-existence probing | Metal | unknown |
-| Font ligatures | yes | yes | yes | no | yes | yes | partial | no | no | ? | yes | yes | ? |
-| Bitmap/emoji font support | yes | yes | yes | yes | yes | yes | yes | partial | partial | ? | yes | yes | ? |
-| Subpixel (LCD) antialiasing | yes | no | no | yes | yes | partial | partial | no | yes | ? | yes | partial | ? |
-| Variable font support | ? | yes | yes | ? | partial | ? | yes | yes | ? | ? | ? | ? | ? |
+| GPU-accelerated rendering | yes | yes | yes | no | yes | no | partial | yes | no | yes | no | yes | no |
+| GPU rendering API | Qt RHI (OpenGL, Vulkan, Metal, or Direct3D 11, selected by Qt's backend at runtime) | OpenGL 3.1+ (Linux, w/ extensions) / OpenGL 3.3 core (macOS) | Metal (macOS), OpenGL 4.3+ (Linux/BSD), WebGL (wasm) | none (software rendering via pixman + Wayland shm buffers) | OpenGL (default); optional WebGpu via wgpu (Vulkan/Metal/DX12); Software fallback | none - CPU/software rasterization via QWidget+QPainter (Qt raster paint engine) | GTK4 GSK scene graph (OpenGL 'NGL' renderer; Vulkan by default on Wayland since GTK 4.16) | OpenGL 3.3 core (GLES 2.0 fallback) | none (Xlib/Xft, CPU-rendered) | Direct3D 11 (AtlasEngine) | None — GDI raster (CPU); DirectWrite only for glyph-existence probing | Metal | none (CoreGraphics/CoreText, CPU) |
+| Font ligatures | yes | yes | yes | no | yes | yes | partial | no | no | yes | yes | yes | partial |
+| Bitmap/emoji font support | yes | yes | yes | yes | yes | yes | yes | partial | partial | yes | yes | yes | yes |
+| Subpixel (LCD) antialiasing | yes | no | no | yes | yes | partial | partial | no | yes | yes | yes | partial | no |
+| Variable font support | ? | yes | yes | ? | partial | ? | yes | yes | ? | yes | ? | ? | ? |
 
 ### Session
 
 | Feature | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm | Windows Terminal | Mintty | iTerm2 | Terminal.app |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Shell integration (semantic prompt marks) | yes | yes | yes | yes | yes | yes | yes | no | no | ? | partial | yes | ? |
-| Session restore | no | partial | partial | no | partial | yes | no | no | no | ? | no | yes | ? |
-| Remote/SSH integration (e.g. kitten ssh) | no | yes | yes | no | yes | yes | no | no | no | ? | no | yes | ? |
-| Built-in multiplexer (detachable, tmux-like) | no | no | no | no | yes | no | no | no | no | ? | no | partial | ? |
+| Shell integration (semantic prompt marks) | yes | yes | yes | yes | yes | yes | yes | no | no | yes | partial | yes | partial |
+| Session restore | no | partial | partial | no | partial | yes | no | no | no | yes | no | yes | yes |
+| Remote/SSH integration (e.g. kitten ssh) | no | yes | yes | no | yes | yes | no | no | no | partial | no | yes | partial |
+| Built-in multiplexer (detachable, tmux-like) | no | no | no | no | yes | no | no | no | no | no | no | partial | no |
 
 ## Licence
 

@@ -9,12 +9,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/contour/CMakeLists.txt:262 find_package(X11 REQUIRED) on Linux
     kitty: glfw/x11_window.c; docs/faq.rst:335 (X11 icon support)
@@ -29,6 +29,9 @@
     xterm: xterm is the reference X11 terminal emulator (Xt/Xaw toolkit); xterm.man throughout
     alacritty: https://alacritty.org/ and GitHub README — 'supported platforms currently consist of BSD,
       Linux, macOS and Windows'; X11 is the default Linux backend
+    windows-terminal: Windows-only WinUI3/Win32 app model; src/cascadia is XAML/WinRT, no X11 backend
+      anywhere in the tree
+    apple-terminal: macOS-only, ships as part of the OS (support.apple.com/guide/terminal)
 - id: platform_linux_wayland
   name: Linux/Wayland
   category: platform
@@ -40,12 +43,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/contour/CMakeLists.txt:12 option(CONTOUR_WAYLAND ... ON); Qt6::WaylandClient
     kitty: glfw/wl_window.c, glfw/wl_text_input.c
@@ -60,6 +63,8 @@
     iterm2: macOS-only application
     xterm: X11-only application; no native Wayland backend (runs only via XWayland, not native)
     alacritty: Native Wayland support; CHANGELOG 0.11.0 (xdg_activation_v1 urgency, wp-fractional-scale-v1)
+    windows-terminal: Windows-only WinUI3/Win32 app model; no Wayland backend
+    apple-terminal: macOS-only, ships as part of the OS
 - id: platform_macos
   name: macOS
   category: platform
@@ -71,12 +76,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: partial
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: 'yes'
     xterm: partial
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'README.md: ''Available on all major platforms, Linux, macOS, FreeBSD, OpenBSD, Windows.'''
     kitty: kitty/cocoa_window.m, kitty/core_text.m; kitty/data-types.h:26-28 (__APPLE__ GL 3.3)
@@ -91,6 +96,8 @@
     iterm2: Native Cocoa/AppKit macOS application; https://iterm2.com/
     xterm: Runs only via XQuartz (X11 server for macOS); not a native Cocoa app, no native macOS build
     alacritty: https://github.com/alacritty/alacritty README platform list
+    windows-terminal: Windows-only WinUI3/Win32 app model; no macOS port
+    apple-terminal: Native Cocoa app bundled with every macOS install (support.apple.com/guide/terminal)
 - id: platform_windows
   name: Windows
   category: platform
@@ -102,12 +109,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: partial
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: README.md platform list; cmake/FindQt.cmake Windows-specific path
     kitty: No Windows build; KITTY_OS reports only linux/macos/bsd (docs/conf.rst:46). WSL-only in practice.
@@ -123,6 +130,8 @@
     iterm2: macOS-only application
     xterm: Requires Cygwin/WSL plus an X server (e.g. VcXsrv/Xming); no native Windows port
     alacritty: README — ConPTY backend; requires Windows 10 1809 or newer
+    windows-terminal: Native Windows 10/11 app; src/cascadia (WinUI3/XAML), src/renderer/atlas (D3D11)
+    apple-terminal: macOS-only; no Windows build exists
 - id: platform_bsd
   name: BSD
   category: platform
@@ -134,12 +143,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'README.md / docs/index.md: ''From Linux and macOS to FreeBSD, OpenBSD and Windows'''
     kitty: docs/conf.rst:46 KITTY_OS='bsd'; docs/glossary.rst:256; changelog FreeBSD/NetBSD fixes
@@ -155,6 +164,8 @@
     iterm2: macOS-only application
     xterm: Ships as part of X11 on FreeBSD/OpenBSD/NetBSD (same xterm codebase, X11-based)
     alacritty: README/site list BSD explicitly alongside Linux/macOS/Windows
+    windows-terminal: Windows-only; no BSD port
+    apple-terminal: Darwin/macOS-exclusive; does not run on FreeBSD/OpenBSD/NetBSD
 - id: gpu_acceleration
   name: GPU-accelerated rendering
   category: rendering
@@ -166,12 +177,12 @@
     wezterm: 'yes'
     gnome-terminal: partial
     konsole: 'no'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'no'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'docs/features.md: ''GPU-accelerated rendering''; src/contour/display/RhiRenderer.cpp'
     kitty: docs/overview.rst:16 'using only OpenGL for rendering everything'
@@ -190,6 +201,9 @@
     xterm: Renders via Xlib/Xft (CPU-side); xterm.man faceName/renderFont resources describe Xft TrueType
       rendering, no GPU path exists
     alacritty: https://alacritty.org/ — 'a cross-platform, OpenGL terminal emulator'
+    windows-terminal: AtlasEngine (default renderer since 1.18) draws via Direct3D 11 — src/renderer/atlas/BackendD3D.{h,cpp}
+    apple-terminal: Renders via CoreText/CoreGraphics CPU rasterization; no Metal (or other GPU) renderer
+      is documented or shipped, unlike iTerm2/Ghostty/Alacritty/Kitty which added one
 - id: gpu_api
   name: GPU rendering API
   category: rendering
@@ -202,12 +216,12 @@
     gnome-terminal: GTK4 GSK scene graph (OpenGL 'NGL' renderer; Vulkan by default on Wayland since GTK
       4.16)
     konsole: none - CPU/software rasterization via QWidget+QPainter (Qt raster paint engine)
-    windows-terminal: unknown
+    windows-terminal: Direct3D 11 (AtlasEngine)
     mintty: None — GDI raster (CPU); DirectWrite only for glyph-existence probing
     iterm2: Metal
     xterm: none (Xlib/Xft, CPU-rendered)
     alacritty: OpenGL 3.3 core (GLES 2.0 fallback)
-    apple-terminal: unknown
+    apple-terminal: none (CoreGraphics/CoreText, CPU)
   evidence:
     contour: src/contour/display/TerminalRenderNode.cpp, RhiRenderer.cpp use QRhi abstraction
     kitty: kitty/data-types.h:24-30; docs/changelog.rst:1843 (min lowered 3.3->3.1+ext on Linux); no Metal/Vulkan
@@ -223,6 +237,9 @@
     xterm: xterm.man renderFont/faceName resources; no GPU/Vulkan/OpenGL/Metal reference anywhere in source
       or docs
     alacritty: README minimum requirement; GLES2 fallback renderer discussion in issue tracker
+    windows-terminal: src/renderer/atlas/BackendD3D.h/.cpp — D3D11 device/swapchain creation and draw
+      calls
+    apple-terminal: No GPU compositing path documented anywhere for Terminal.app's text rendering
 - id: font_ligatures
   name: Font ligatures
   category: rendering
@@ -234,12 +251,12 @@
     wezterm: 'yes'
     gnome-terminal: partial
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: partial
   evidence:
     contour: 'docs/features.md: ''Font ligatures support (such as in Fira Code)''; src/text_shaper/cluster_spans.h'
     kitty: kitty/options/definition.py:109 disable_ligatures option (calt OpenType feature)
@@ -258,6 +275,12 @@
       support mentioned in xterm.man
     alacritty: 'GitHub issue #50 still open; custom rasterizer with no HarfBuzz shaping pass; PR #2677
       (HarfBuzz ligatures) never merged — confirmed still unsupported in 2025 sources'
+    windows-terminal: DWRITE_FONT_FEATURE_TAG_STANDARD_LIGATURES + _CONTEXTUAL_LIGATURES enabled — src/renderer/atlas/AtlasEngine.api.cpp:543-544,
+      with a per-glyph-run ligature-overhang heuristic for cursor/selection drawing (BackendD3D.cpp:322-345)
+    apple-terminal: 'Only the ''calt'' (contextual alternates) OpenType feature is shaped; ''liga''/''dlig''
+      — what most programming-ligature fonts (Fira Code, etc.) rely on — do not render, and there is no
+      user setting to change this. Not Apple-documented; widely reported (github.com/be5invis/Iosevka
+      issue #294; multiple font-vendor support threads)'
 - id: bitmap_emoji_fonts
   name: Bitmap/emoji font support
   category: rendering
@@ -269,12 +292,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: partial
     alacritty: partial
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Unicode: Emoji support ... including ZWJ, VS15, VS16 emoji'''
     kitty: kitty/freetype.c:551 FT_LOAD_COLOR; kitty/fonts.c emoji_presentation handling
@@ -295,6 +318,10 @@
       build having upstreamed color-glyph support (historically Xft was monochrome-only)
     alacritty: 'CHANGELOG 0.5.0 ''Colored emojis on Linux/BSD''; macOS renders emoji too, but Windows
       colored-emoji issue #3082 remains open (greyscale only there)'
+    windows-terminal: DirectWrite color-glyph-run rendering (COLR/CPAL + bitmap emoji fonts) — ColorGlyphRunDraw/_emojiBrush,
+      src/renderer/atlas/BackendD3D.cpp:892,1551
+    apple-terminal: Renders Apple Color Emoji (sbix) like any Cocoa text view — standard system text-rendering
+      behavior
 - id: subpixel_antialiasing
   name: Subpixel (LCD) antialiasing
   category: rendering
@@ -306,12 +333,12 @@
     wezterm: 'yes'
     gnome-terminal: partial
     konsole: partial
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: partial
     xterm: 'yes'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/text_shaper/open_shaper.cpp uses FT_LOAD_TARGET_LCD / FT_RENDER_MODE_LCD, FT_Library_SetLcdFilter
     kitty: kitty/freetype.c:1299,1334,1397 use FT_RENDER_MODE_NORMAL only (grayscale AA); no LCD render
@@ -336,6 +363,10 @@
       antialiasing via fontconfig configuration
     alacritty: 'Issue #4059 ''Subpixel antialiasing is not available Linux''; issues #2/#3756 describe
       subpixel mask handling as broken/unsupported — effectively greyscale AA only'
+    windows-terminal: AntialiasingMode::ClearType is a real DirectWrite ClearType (RGB subpixel) rendering
+      mode — src/renderer/atlas/AtlasEngine.api.cpp:518, dwrite_helpers.cpp
+    apple-terminal: Apple removed subpixel/LCD font smoothing system-wide starting with Mojave (10.14,
+      2018); every Cocoa app, Terminal.app included, has been grayscale-AA-only since
 - id: variable_fonts
   name: Variable font support
   category: rendering
@@ -347,7 +378,7 @@
     wezterm: partial
     gnome-terminal: 'yes'
     konsole: unknown
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: unknown
     iterm2: unknown
     xterm: unknown
@@ -372,6 +403,11 @@
     xterm: No resource or documentation found addressing OpenType variable-font axis selection; Xft/FreeType
       could load a variable font's default instance but no dedicated control was found
     alacritty: CHANGELOG 0.4.2 — 'Handling of OpenType variable fonts'
+    windows-terminal: DWRITE_FONT_AXIS_VALUE / DWRITE_FONT_AXIS_TAG_WEIGHT|ITALIC|SLANT plus arbitrary
+      user-supplied axes — src/renderer/atlas/AtlasEngine.api.cpp:572-594
+    apple-terminal: No Apple documentation either way; Terminal's font picker is the standard NSFontPanel
+      (which does support variable-font instances for general apps), but there is no confirmation it exposes
+      per-axis control for Terminal's monospace font setting
 - id: tabs
   name: Tabs
   category: layout
@@ -383,12 +419,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Terminal tabs''; src/contour/ui/TabStrip.qml'
     kitty: docs/overview.rst (Creating tabs/windows); docs/layouts.rst
@@ -404,6 +440,9 @@
     xterm: No tab concept in xterm.man; relies entirely on external window managers or terminal multiplexers
     alacritty: FAQ — 'you won't find things like tabs or splits (which are best left to a window manager
       or terminal multiplexer)'
+    windows-terminal: Core feature; src/cascadia/TerminalApp/TabManagement.cpp
+    apple-terminal: support.apple.com/guide/terminal — 'Work in Terminal windows' (Command-T new tab,
+      Shift-Command-T tab bar)
 - id: split_panes
   name: Split panes
   category: layout
@@ -415,12 +454,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'no'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/accessibility.md: ''a split window''; src/vtmux PaneNode tree; memory note ''Single
       renderer: pane tree'''
@@ -436,6 +475,9 @@
       session'''
     xterm: No split-pane concept anywhere in xterm.man; relies on external tools (tmux/screen)
     alacritty: Same FAQ statement — splits are an explicit non-goal
+    windows-terminal: src/cascadia/TerminalApp/Pane.cpp; split-pane action handlers in AppActionHandlers.cpp
+    apple-terminal: 'Official Apple keyboard-shortcuts guide (support.apple.com/guide/terminal/keyboard-shortcuts-trmlshtcts/mac):
+      ''Split window into two panes'' = Command-D, ''Close split pane'' = Shift-Command-D'
 - id: tab_pane_detach_reorder
   name: Tab/pane detach & reorder
   category: layout
@@ -447,12 +489,12 @@
     wezterm: partial
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: partial
   evidence:
     contour: Cross-window tab move via setSession display-rebind; tab strip supports reordering
     kitty: kitty/rc/detach_window.py, kitty/rc/detach_tab.py; docs/basic.rst:95-120; docs/changelog.rst:312
@@ -472,6 +514,12 @@
       between tabs (iterm2.com general usage docs)
     xterm: N/A - xterm has neither tabs nor panes
     alacritty: No tabs or panes exist to detach or reorder
+    windows-terminal: MoveTabArgs/_HandleMoveTab (src/cascadia/TerminalApp/AppActionHandlers.cpp:855-860)
+      + 'Move Tab to New Window' context-menu action (Tab.cpp:1545-1546); MovePaneArgs moves panes between
+      tabs/windows
+    apple-terminal: Tabs support standard macOS tabbed-window drag-to-reorder / drag-out-to-new-window
+      (inherited Cocoa behavior). Split panes cannot be reordered, detached into their own window, or
+      moved between windows — only closed (Shift-Command-D per the official shortcuts guide)
 - id: quake_dropdown_mode
   name: Quake/dropdown mode
   category: layout
@@ -483,12 +531,12 @@
     wezterm: 'no'
     gnome-terminal: 'no'
     konsole: 'no'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: No quake/dropdown-terminal feature found in src/contour; matches for 'dropdown' are only
       the new-tab profile picker menu (NewTabMenu.qml)
@@ -509,6 +557,9 @@
     xterm: No hotkey/dropdown window feature documented in xterm.man
     alacritty: 'Issue #2975 is an unimplemented feature request; only third-party workarounds (Hammerspoon
       on macOS, tdrop/AwesomeWM on Linux)'
+    windows-terminal: Officially named 'Quake Mode'; WindowProperties::IsQuakeWindow(), src/cascadia/TerminalApp/TerminalWindow.cpp:1467
+    apple-terminal: No hotkey/dropdown summon window exists; not in Apple's docs, and a well-known gap
+      versus iTerm2's Hotkey Window
 - id: fullscreen
   name: Fullscreen mode
   category: layout
@@ -520,12 +571,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'src/contour/WindowController.h: setWindowFullScreen/toggleFullScreen; src/contour/Actions.h
       ToggleFullscreen'
@@ -542,6 +593,9 @@
       action, and XTWINOPS 10 ''FullscreenWin'' control sequence (ctlseqs.txt:3529)'
     alacritty: ToggleFullscreen / ToggleSimpleFullscreen (macOS) keybinding actions; window.startup_mode
       = Fullscreen|SimpleFullscreen
+    windows-terminal: LaunchMode::FullscreenMode, src/cascadia/TerminalApp/TerminalWindow.cpp:253
+    apple-terminal: Standard macOS green-button fullscreen, documented for any Cocoa app (support.apple.com/guide/mac-help/use-apps-in-full-screen-mchl9c21d2be/mac)
+      and applies to Terminal.app
 - id: search_scrollback
   name: Search in scrollback
   category: interaction
@@ -553,12 +607,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: src/vtbackend/ViCommands.h searchStart/searchDone/updateSearchTerm; src/contour/Actions.h
       SearchReverse, FocusNextSearchMatch
@@ -577,6 +631,9 @@
       jump-scroll actions only)
     alacritty: CHANGELOG 0.7.0 added search with configurable keybindings and history; vi-mode '/' and
       '?' search
+    windows-terminal: src/cascadia/TerminalControl/SearchBoxControl.{h,cpp}
+    apple-terminal: Edit > Find searches the window's scrollback (Command-F / Command-G); 'Select and
+      find text in a Terminal window' section of the official keyboard-shortcuts guide
 - id: url_hyperlink_click
   name: URL/hyperlink click
   category: interaction
@@ -588,12 +645,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: partial
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Clickable hyperlinks via OSC 8'''
     kitty: 'OSC 8: kitty/options/definition.py:2465 allow_hyperlinks; docs/basic.rst click_url mapping;
@@ -613,6 +670,9 @@
       not a default/built-in feature
     alacritty: hints.enabled regex/hyperlink detection with click-to-open (xdg-open on Linux/BSD); OSC
       8 hyperlink support since CHANGELOG 0.11.0
+    windows-terminal: OpenHyperlink event + Tab/Shift-Tab hyperlink navigation, src/cascadia/TerminalControl/ControlCore.cpp:612-630
+    apple-terminal: Command-double-click (or Option-click > Open URL) opens a detected URL/URI; long-standing,
+      widely documented Terminal.app behavior (Apple Support Communities)
 - id: copy_on_select
   name: Copy-on-select
   category: interaction
@@ -624,12 +684,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/contour/Config.h SelectionAction::CopyToSelectionClipboard (default on_mouse_select action);
       TerminalSession.cpp writes QClipboard::Selection
@@ -648,6 +708,9 @@
       (xterm.man SELECT AND PASTE section, longstanding default xterm/X11 behavior)'
     alacritty: selection.save_to_clipboard config option (default false, but supported) copies selection
       to clipboard alongside X11 primary selection
+    windows-terminal: CopyOnSelect setting (default off, user-enable-able) — src/cascadia/TerminalSettingsModel/MTSMSettings.h:25
+    apple-terminal: No such preference is offered anywhere in Profiles; copying always requires an explicit
+      Edit > Copy / Command-C
 - id: rectangular_selection
   name: Rectangular (block) selection
   category: interaction
@@ -659,12 +722,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: partial
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: src/vtbackend/Selector.h class RectangularSelection; Settings.h mouseBlockSelectionModifiers
     kitty: kitty/options/definition.py:1008,1059 start_rectangle_selection
@@ -684,6 +747,10 @@
       OPT_BLOCK_SELECT to 0 (disabled) unless explicitly enabled via --enable-block-select; this checkout''s
       own config.log shows it built with OPT_BLOCK_SELECT 0'
     alacritty: CHANGELOG 0.4.0 — 'Block selection mode when Control is held while starting a selection'
+    windows-terminal: IsBlockSelection()/SetBlockSelection() — src/cascadia/TerminalCore/TerminalSelection.cpp:157,
+      ControlCore.cpp:1425
+    apple-terminal: Option+drag makes a rectangular/column selection — standard Cocoa text-view behavior
+      Terminal.app inherits (widely documented, e.g. macmost.com, macosxtips.co.uk)
 - id: mouse_reporting_toggle
   name: Mouse reporting toggles
   category: interaction
@@ -695,12 +762,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: Standard VT mouse tracking modes (1000/1002/1003/1006 etc.) implemented in vtbackend Screen/Terminal
     kitty: kitty/screen.c:1722-1742 MOUSE_MODE (1000/1002/1003/1006, SGR/UTF8/urxvt) + shift-click override
@@ -721,6 +788,9 @@
       Mouse Tracking section, ~line 2913-2955'
     alacritty: Implements standard xterm mouse-reporting DECSET modes (used transparently by vim/tmux);
       baseline VT behaviour, though not stated verbatim in a doc page
+    windows-terminal: Holding Shift suppresses/overrides app mouse-tracking capture — src/cascadia/TerminalControl/ControlInteractivity.cpp:692-705
+    apple-terminal: 'Official Apple guide: ''Turn on Mouse Reporting in Terminal on Mac'' (View > Allow
+      Mouse Reporting); supports xterm mouse-tracking modes for apps like vim/tmux'
 - id: ime_dead_key_support
   name: IME / dead-key support
   category: interaction
@@ -732,12 +802,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: partial
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: src/contour/display/ImeQueryRect.h; Qt input-method integration in TerminalDisplay
     kitty: glfw/ibus_glfw.c (Linux IME), glfw/xkb_glfw.c (dead keys/compose), glfw/wl_text_input.c (Wayland
@@ -758,6 +828,10 @@
       line ~4228/704) plus X11 Compose-key sequence support (xterm.man:8766)
     alacritty: 'CHANGELOG 0.13.0 ''Support for keybindings with dead keys'' and ''IME purpose is now set
       to Terminal''; but issues #44/#2734 document inconsistent fcitx/IBus behaviour on Wayland and X11'
+    windows-terminal: Dedicated IME handling that re-injects navigation/confirmation keys during composition
+      — src/cascadia/TerminalControl/TermControl.cpp:1800
+    apple-terminal: Standard macOS system-wide dead-key/IME text input (Cocoa text-input framework), available
+      in any text-entry context including Terminal.app
 - id: vi_mode_copy_mode
   name: Keyboard-driven vi mode / copy mode
   category: interaction
@@ -769,12 +843,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'no'
-    windows-terminal: unknown
+    windows-terminal: partial
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'docs: ''Vi-like input modes for improved navigation, selection and copy-n-paste''; src/vtbackend/ViCommands.cpp/.h'
     kitty: No native modal copy-mode; delegates to external scrollback_pager (default 'less') at kitty/options/definition.py:543-557,
@@ -795,6 +869,11 @@
       (aside from basic keyboard selection actions)
     alacritty: docs/features.md 'Vi Mode' — move/select/search/open links with vi bindings, 'v' to select,
       'y' to yank
+    windows-terminal: '''Mark Mode'' (Ctrl+Shift+M, since 1.15) is a keyboard-driven selection mode —
+      ToggleMarkMode(), src/cascadia/TerminalCore/TerminalSelection.cpp:353 — but navigation is arrows/Home/End/PgUp/PgDn,
+      not vi h/j/k/l motions; actual vi keybindings are an open, unimplemented feature request (github.com/microsoft/terminal
+      issue #11868)'
+    apple-terminal: No keyboard-driven modal copy/selection mode of any kind exists
 - id: shell_integration
   name: Shell integration (semantic prompt marks)
   category: session
@@ -806,12 +885,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: partial
   evidence:
     contour: 'OSC 133 semantic prompt marks (memory: ''OSC 133 marks are logical-line positions''); OSC
       133;B prompt-end mark support'
@@ -834,6 +913,12 @@
     xterm: No OSC 133/semantic-prompt-mark convention found anywhere in ctlseqs.txt
     alacritty: 'Issue #5850 ''Consider adding OSC 133'' still open; no native semantic prompt marks in
       current stable'
+    windows-terminal: OSC 133 / FTCS (Final Term semantic prompt marks) handling — src/terminal/adapter/adaptDispatch.cpp,
+      src/cascadia/TerminalControl/ControlCore.cpp; officially documented shell-integration feature
+    apple-terminal: 'Built-in ''Marks'' auto-mark prompt lines on Return/Control-C/Control-D (square-bracket
+      gutter markers, Command-Down-Arrow to jump) — support.apple.com/guide/terminal/use-marks-and-bookmarks-trml135fbc26/mac.
+      This is Terminal''s own visual heuristic, not a semantic OSC-133-style protocol: it doesn''t track
+      command start/end boundaries or exit status'
 - id: session_restore
   name: Session restore
   category: session
@@ -845,12 +930,12 @@
     wezterm: partial
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'no'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: No session-restore feature found in src/contour (no restoreSession/SessionRestore matches)
     kitty: docs/sessions.rst startup_session/--session launches a saved layout; kitty/session.py save_as_session
@@ -873,6 +958,11 @@
     xterm: No session-save/restore feature documented in xterm.man
     alacritty: 'Issue #8131 ''Session Manager Support'' open; no SESSION_MANAGER handling; scrollback
       even lost on minimize/restore in some cases (#6472, #7074)'
+    windows-terminal: '''firstWindowPreference: persistedWindowLayout'' restores window/tab/pane layout
+      and working directory on relaunch — src/cascadia/TerminalSettingsModel/ApplicationState.cpp; learn.microsoft.com/windows/terminal/customize-settings/startup'
+    apple-terminal: Terminal.app participates in macOS's standard window-state restoration ('reopen windows
+      when logging back in'), shows a 'Restored session' banner, and restores the working directory via
+      its installed shell-integration scripts
 - id: remote_ssh_integration
   name: Remote/SSH integration (e.g. kitten ssh)
   category: session
@@ -884,12 +974,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: partial
     mintty: 'no'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: partial
   evidence:
     contour: No remote-control or ssh-kitten-equivalent feature found (no 'remote control'/'kitten' matches)
     kitty: docs/kittens/ssh.rst - shell integration bootstrap, terminfo copy, config cloning, forwarded
@@ -912,6 +1002,13 @@
     xterm: No dedicated remote/SSH feature; xterm.man has no ssh-specific integration, xterm is simply
       run with a shell (which may itself invoke ssh)
     alacritty: No kitten-ssh equivalent; design philosophy defers this to external tools (tmux/mosh)
+    windows-terminal: Dynamic SSH profile generator reads ~/.ssh/config and creates one profile per host
+      — src/cascadia/TerminalSettingsModel/SshHostGenerator.cpp — but it only spawns the local 'ssh' client
+      in a PTY, no deeper remote-side integration (unlike e.g. kitty's 'kitten ssh', which bootstraps
+      terminfo/shell-integration on the remote host)
+    apple-terminal: Native Shell > New Remote Connection (Shift-Command-K) browses Bonjour-advertised
+      and known ssh/sftp/ftp/telnet hosts and launches a connection — support.apple.com/guide/terminal/connect-to-servers-in-terminal-trml1018/mac
+      — but it is likewise just a connection launcher, not a deep remote-protocol integration
 - id: multiplexer_built_in
   name: Built-in multiplexer (detachable, tmux-like)
   category: session
@@ -923,12 +1020,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'no'
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: partial
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: vtmux is a local, in-process Qt-free tab/split-pane TREE model, not a detachable/remote session
       multiplexer like tmux
@@ -954,6 +1051,10 @@
       tmux/screen
     alacritty: FAQ delegates multiplexing to external tools; the Multi-Window feature shares one process/GPU
       context across independent windows but offers no detach/reattach
+    windows-terminal: Tabs/panes/splits live inside one process; there is no detachable/reattachable session
+      (tmux/screen-like) — closing a window ends its child processes
+    apple-terminal: Tabs/split-panes are local to one Terminal.app process/window; no session daemon,
+      no detach/reattach
 - id: config_format
   name: Configuration format
   category: config
@@ -966,12 +1067,12 @@
     gnome-terminal: GSettings/dconf (binary key-value database under the org.gnome.Terminal schema), not
       a text config file
     konsole: KConfig INI-style (konsolerc + per-profile .profile files)
-    windows-terminal: unknown
+    windows-terminal: JSON (settings.json)
     mintty: Flat key=value text file (.minttyrc)
     iterm2: plist (native Preferences); profiles also as Dynamic Profiles JSON/XML
     xterm: X resources (~/.Xresources, app-defaults / XrmDatabase)
     alacritty: TOML (alacritty.toml)
-    apple-terminal: unknown
+    apple-terminal: Property List (.plist / .terminal)
   evidence:
     contour: 'memory: ''GUI writes ONLY side files (never contour.yml)''; src/contour/Config.cpp yaml-cpp
       parsing'
@@ -989,6 +1090,9 @@
       Support/iTerm2/DynamicProfiles as JSON/XML/binary plist (iterm2.com/documentation-dynamic-profiles.html)
     xterm: xterm.man RESOURCES section describes the entire configuration surface as X toolkit resources
     alacritty: CHANGELOG 0.13.0 — 'Configuration file now uses TOML instead of YAML'
+    windows-terminal: src/cascadia/TerminalSettingsModel/CascadiaSettingsSerialization.cpp
+    apple-terminal: Preferences live in com.apple.Terminal.plist; profiles export/import as .terminal
+      files (plist format) — support.apple.com/guide/terminal/import-and-export-terminal-profiles-trml4299c696/mac
 - id: live_reload
   name: Live config reload
   category: config
@@ -1000,12 +1104,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'docs/features.md: ''Runtime configuration reload''; src/contour/Actions.h actions::ReloadConfig;
       Config.cpp:498 live-reload path'
@@ -1030,6 +1134,9 @@
       ~6953/8125), no resource-file reload mechanism. Only a fixed set of options can be toggled live
       via the Ctrl-click menus
     alacritty: live_config_reload option, default true — alacritty.org config reference
+    windows-terminal: ThrottledFunc watches and re-applies settings.json without a restart — src/cascadia/TerminalApp/AppLogic.cpp:137,442
+    apple-terminal: No externally-watched config file; several Profile settings (e.g. background opacity/blur)
+      explicitly require opening a new window before they take effect
 - id: gui_settings_panel
   name: GUI settings panel
   category: config
@@ -1041,12 +1148,12 @@
     wezterm: 'no'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: partial
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'src/contour/SettingsController.h/.cpp; WT-style settings tab (memory: ''GUI settings page'')'
     kitty: 'No native settings dialog (all UI is OpenGL-rendered, docs/overview.rst:16); only scoped in-terminal
@@ -1068,6 +1175,9 @@
       settings - most configuration lives in X resource files, not a GUI
     alacritty: README explicitly lists 'GUI configuration editor' among features NOT provided; config-file
       only
+    windows-terminal: Dedicated TerminalSettingsEditor project — a full visual Settings UI (since 1.12),
+      src/cascadia/TerminalSettingsEditor/
+    apple-terminal: Terminal > Settings — full preferences GUI (Profiles, Window, Keyboard, etc.)
 - id: per_profile_settings
   name: Per-profile settings
   category: config
@@ -1079,12 +1189,12 @@
     wezterm: partial
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Profiles (grouped customization of: color scheme, login shell, and related
       behaviors)'''
@@ -1107,6 +1217,8 @@
       only
     alacritty: No named/switchable profiles; general.import only composes multiple config files, with
       no per-window/per-tab profile picker
+    windows-terminal: src/cascadia/TerminalSettingsModel/Profile.h
+    apple-terminal: Multiple named Profiles, selectable as the default or per new window
 - id: theming_colorscheme
   name: Theming / colour-scheme support
   category: config
@@ -1118,12 +1230,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Color Schemes''; memory: ''GUI theme config (system/dark/light)'''
     kitty: docs/kittens/themes.rst - 300+ prebuilt themes via 'kitten themes', live preview
@@ -1143,6 +1255,9 @@
     xterm: xterm.man documents extensive color-related resources (color0-color15/foreground/background/colorUL/colorBD,
       reverseVideo, -cm, 88/256-color support)
     alacritty: '[colors] config section; large community colorscheme ecosystem importable via general.import'
+    windows-terminal: Color schemes plus a separate window/tab 'theme' settings object (1.16+) — learn.microsoft.com/windows/terminal/customize-settings/theme
+    apple-terminal: Profiles bundle a full color scheme; several Apple-provided presets (Basic, Pro, Homebrew,
+      Man Page, Novel, Ocean, ...), importable/exportable as .terminal files
 - id: screen_reader_a11y
   name: Screen-reader / a11y support
   category: accessibility
@@ -1154,12 +1269,12 @@
     wezterm: 'no'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'no'
     iterm2: partial
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: partial
   evidence:
     contour: src/contour/display/TerminalAccessible.cpp/.h (QAccessible integration); docs/accessibility.md
     kitty: 'No a11y code in source tree; kitty GitHub Discussion #9202 confirms no screen-reader integration'
@@ -1182,6 +1297,11 @@
     alacritty: 'No accessibility-API support documented in README/features/config; issue #3855 concerns
       keyboard-only selection, not AT-SPI/NSAccessibility/UIA. Verdict rests on consistent absence of
       any a11y claim'
+    windows-terminal: Shared UIA provider since 2019, dispatches cursor/text/selection UIA events (2020)
+      and UIA text-output notifications (2022) for Narrator/JAWS/NVDA — doc/terminal-a11y-2023.md
+    apple-terminal: VoiceOver support is documented (support.apple.com/guide/terminal/use-macos-accessibility-features-trml1020/mac),
+      but users report significant real-world problems with full-screen/redrawing apps like vim (applevis.com
+      forum reports)
   notes: 'Accessibility is broadly weak across GPU-native terminals: kitty and wezterm have no screen-reader
     integration at all (kitty Discussion #9202; wezterm issue #913, open since 2021). ghostty is macOS-only
     (real VoiceOver support via AppKit''s accessibility protocol) with no Linux/GTK implementation. Konsole
@@ -1198,7 +1318,7 @@
     wezterm: 'no'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'no'
     iterm2: unknown
     xterm: 'no'
@@ -1225,6 +1345,9 @@
     xterm: No accessibility caret-reporting mechanism found; consistent with absence of any a11y support
     alacritty: Follows from the absence of any accessibility API layer; no evidence of caret reporting
       found
+    windows-terminal: 'UIA events dispatched on cursor-position change since 2020 (PR #4826) — doc/terminal-a11y-2023.md'
+    apple-terminal: Apple's accessibility guide covers moving the VoiceOver cursor but does not document
+      caret/cursor-position reporting specifically; no confirmation either way
   notes: 'Follows the same pattern as screen-reader support: present only where a full a11y stack exists
     (contour, konsole, gnome-terminal/VTE); ghostty''s caret reporting is macOS-only and on-demand rather
     than a proactive AX notification.'
@@ -1239,12 +1362,12 @@
     wezterm: 'yes'
     gnome-terminal: partial
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'docs/features.md: ''Sixel Image support'''
     kitty: Zero 'sixel' hits across kitty source tree (.c/.h/.py/.rst); kitty uses its own graphics protocol
@@ -1264,6 +1387,10 @@
       ~5516-7291); enabled by default since xterm patch #359 per arewesixelyet.com'
     alacritty: 'Issue #910 ''Add support for libsixel'' still open; only unofficial forks (ayosec/alacritty)
       implement it'
+    windows-terminal: Full DECSIXEL parsing/dispatch (DefineSixelImage, DECSDM) — src/terminal/adapter/adaptDispatch.cpp:1441,1842-1846,3911-3920
+      — and AtlasEngine sizes its swapchain to fit 'a screen full of glyphs and sixels' (BackendD3D.cpp:769)
+    apple-terminal: Not supported; a well-known gap versus iTerm2/WezTerm/Ghostty, which added inline
+      image/Sixel support
 - id: kitty_graphics_protocol
   name: Kitty graphics protocol support
   category: other
@@ -1275,12 +1402,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: partial
-    windows-terminal: unknown
+    windows-terminal: 'no'
     mintty: 'no'
     iterm2: partial
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/vtbackend/KittyGraphics.h/.cpp/_test.cpp
     kitty: docs/graphics-protocol.rst - kitty originated this protocol
@@ -1301,6 +1428,8 @@
       and ReGIS graphics
     alacritty: Confirmed unsupported by multiple 2025 comparison sources; image-rendering tools (yazi,
       Neovim image plugins) explicitly cannot render in Alacritty
+    windows-terminal: No references anywhere in the source tree
+    apple-terminal: Not supported
 - id: notification_support
   name: Desktop notification support
   category: other
@@ -1312,12 +1441,12 @@
     wezterm: 'yes'
     gnome-terminal: partial
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: partial
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: src/vtbackend/DesktopNotification.cpp (OSC 99 desktop notifications)
     kitty: docs/desktop-notifications.rst:7 OSC 99 desktop notifications; OSC 9 compatibility shorthand
@@ -1342,6 +1471,10 @@
       exists
     alacritty: 'Issue #7105 ''osc notification support'' open and unimplemented; only a bell.command workaround
       exists, not native OSC 9 desktop notifications'
+    windows-terminal: Real desktop toast notifications via Windows.UI.Notifications — src/cascadia/TerminalApp/DesktopNotification.cpp
+    apple-terminal: Official Apple guide (support.apple.com/guide/terminal/set-an-audio-or-visual-alert-trml20912/mac)
+      limits the Bell alert to a visual window flash or an audible sound — no Notification Center banner.
+      Third-party tools like 'terminal-notifier' exist precisely to fill this gap
 - id: ligature_aware_cursor
   name: Ligature-aware cursor rendering
   category: other
@@ -1353,12 +1486,12 @@
     wezterm: partial
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: No direct evidence found of ligature-aware cursor placement logic; not documented
     kitty: kitty/options/definition.py:109-121 disable_ligatures 'cursor' mode - suppresses ligature under
@@ -1381,6 +1514,10 @@
       within ligated clusters
     xterm: N/A - xterm has no ligature rendering at all, so no ligature-aware cursor handling exists
     alacritty: Follows directly from the absence of ligature support entirely
+    windows-terminal: _ligatureOverhangTriggerLeft/Right thresholds + _drawTextOverlapSplit handle cursor/selection
+      drawing across wide ligature glyph runs — src/renderer/atlas/BackendD3D.cpp:322-345
+    apple-terminal: Not applicable/not supported — ligature shaping itself is essentially absent (calt-only,
+      see font_ligatures)
 - id: blurred_background_transparency
   name: Blurred background / transparency
   category: other
@@ -1392,12 +1529,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: partial
-    apple-terminal: unknown
+    apple-terminal: 'yes'
   evidence:
     contour: 'docs/features.md: ''Blurred behind transparent background...'' and ''Blurrable Background
       image support''; src/contour/Config.h bool blur; Wayland blur protocol (protocols/blur.xml)'
@@ -1422,6 +1559,9 @@
       not an xterm feature
     alacritty: window.opacity works cross-platform; window.blur is restricted to macOS and KDE Wayland
       only per alacritty.org config reference
+    windows-terminal: UseAcrylic profile setting (Fluent Design acrylic material) — src/cascadia/TerminalSettingsModel/MTSMSettings.h
+    apple-terminal: Profile > Background offers an Opacity slider and a separate Blur slider, with an
+      option to apply different values to inactive windows
 - id: tab_colouring
   name: Tab colouring
   category: other
@@ -1433,12 +1573,12 @@
     wezterm: 'yes'
     gnome-terminal: 'no'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: partial
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'memory: ''Tab colorization (WT-style)'' — OKLab fade + auto-contrast in TabColorScheme.h'
     kitty: kitty/rc/set_tab_color.py; kitty/options/definition.py:1841-1846 active_tab_foreground/background;
@@ -1458,6 +1598,10 @@
       via escape sequence/Python API (iterm2.com/documentation-preferences-profiles-colors.html, python-api/examples/settabcolor.html)
     xterm: N/A - xterm has no tabs
     alacritty: No tabs exist, so no tab colouring
+    windows-terminal: TabColor profile/action setting — src/cascadia/TerminalSettingsModel/Profile.h,
+      ActionArgs.h
+    apple-terminal: The Inspector lets you set a tab/window's *terminal background* color, but there is
+      no distinct tab-strip color chip/identifier comparable to Windows Terminal's tabColor
 - id: undercurl_styled_underlines
   name: Undercurl / styled underlines
   category: other
@@ -1469,12 +1613,12 @@
     wezterm: 'yes'
     gnome-terminal: 'yes'
     konsole: 'yes'
-    windows-terminal: unknown
+    windows-terminal: 'yes'
     mintty: 'yes'
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
-    apple-terminal: unknown
+    apple-terminal: 'no'
   evidence:
     contour: 'src/vtbackend/CellFlags.h: CurlyUnderlined, DottedUnderline, DashedUnderline flags'
     kitty: docs/underlines.rst:1-18 - coloured + styled (curly/dotted/dashed/double) underlines via CSI
@@ -1497,3 +1641,7 @@
       styles, and no SGR 58/59 underline-color case exists in charproc.c'
     alacritty: CHANGELOG 0.11.0 — 'Escape sequence for undercurl, dotted and dashed underlines' plus underline-colour
       set/reset; double underline added in 0.6.0
+    windows-terminal: CurlyUnderline rendering (src/renderer/atlas/BackendD2D.cpp:669-800) plus SGR underline-style
+      parsing incl. sub-parameters — src/terminal/adapter/adaptDispatchGraphics.cpp:22-28,384
+    apple-terminal: Not documented or supported; absent from the list of terminals known to have adopted
+      SGR 4:3 curly-underline support (Kitty, VTE, Alacritty, Neovim)

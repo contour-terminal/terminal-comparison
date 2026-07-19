@@ -1,0 +1,22 @@
+{
+  "pages": {
+    "decxcpr": false,
+    "reports_page": false,
+    "multiple_pages": false,
+    "pages_reachable": 1,
+    "raw": {
+      "decxcpr": "''"
+    }
+  },
+  "page_sequences": {
+    "np_pp": false,
+    "raw": {}
+  },
+  "locator": {
+    "decrqlp": false,
+    "locator_available": false,
+    "raw": {
+      "decrqlp": "''"
+    }
+  }
+}

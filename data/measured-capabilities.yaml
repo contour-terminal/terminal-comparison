@@ -51,18 +51,29 @@ probes:
     name: OSC 52 clipboard
     category: clipboard
     caveat: >-
-      Several terminals ship OSC 52 disabled by default for security reasons, so a
-      "no" here may be policy rather than absence.
+      Detected by what the terminal advertises -- DA1 extension 52 and the XTGETTCAP `Ms`
+      capability -- not by writing to the clipboard, which would raise a permission
+      prompt. A terminal that implements OSC 52 without advertising it, or that ships it
+      disabled for security reasons, therefore reads as "no".
 
   - id: styled_underlines
     field: styled_underlines
     name: Styled underlines (CSI 4:x)
     category: colors
+    caveat: >-
+      Asked through XTGETTCAP, so this measures whether the terminal *advertises* the
+      capability, not whether it draws a curly underline. Several terminals that render
+      them -- VTE, Konsole and Alacritty among the ones measured here -- do not answer the
+      capability query, and the documented matrix records them as supporting the feature.
+      Read a "no" as "not advertised".
 
   - id: colored_underlines
     field: colored_underlines
     name: Underline colour (SGR 58)
     category: colors
+    caveat: >-
+      Asked through XTGETTCAP, with the same caveat as styled underlines: this is what the
+      terminal advertises, not what it renders.
 
   - id: decrqss
     field: decrqss
@@ -77,6 +88,61 @@ probes:
       The reply's final byte is contested: xterm answers `* y`, and a probe expecting
       `$ y` records a false negative. Treat a "no" here as unconfirmed rather than
       absent.
+
+# --- extra VT probes, read from <terminal>.vtprobe.json ----------------------------
+# These are features DECRQM cannot answer, because they are not modes.  The probe uses
+# the sequence and reads what comes back; `path` addresses the probe's JSON output.
+vt_probes:
+  - id: decxcpr
+    path: pages.decxcpr
+    name: DECXCPR (extended cursor position report)
+    category: pages
+
+  - id: reports_page
+    path: pages.reports_page
+    name: Reports a page number
+    category: pages
+    caveat: >-
+      A terminal can answer DECXCPR without the third (page) parameter. That is recorded
+      here as "no": it answers the report but has no page memory to describe.
+
+  - id: multiple_pages
+    path: pages.multiple_pages
+    name: DEC page memory (more than one page)
+    category: pages
+    caveat: >-
+      Confirmed by moving with PPA and asking DECXCPR which page the cursor is on, so a
+      terminal that accepts PPA and ignores it is not counted. The probe stops looking
+      after page 8, so "pages reached" is a floor, not a maximum.
+
+  - id: pages_reachable
+    path: pages.pages_reachable
+    name: Pages reached (probe stops at 8)
+    category: pages
+    numeric: true
+
+  - id: np_pp
+    path: page_sequences.np_pp
+    name: NP / PP (next and preceding page)
+    category: pages
+
+  - id: decrqlp
+    path: locator.decrqlp
+    name: DEC locator (DECELR / DECRQLP)
+    category: locator
+    caveat: >-
+      A terminal with no locator answers nothing at all. xterm implements the locator but
+      did not answer under the harness's default settings, which start it at its default
+      conformance level; treat its "no" as unconfirmed rather than absent.
+
+  - id: locator_available
+    path: locator.locator_available
+    name: Locator reports a position
+    category: locator
+    caveat: >-
+      DECLRP with Pe=0 means "locator unavailable" -- the sequence is implemented but no
+      pointing device answered. Under a headless display that is the expected reply, so
+      this row separates "implements the locator" from "a device was there".
 
 # --- DEC private modes, read from terminal_results.modes ---------------------------
 # `supported` is what DECRQM reported; a mode the terminal does not recognise answers
@@ -95,21 +161,66 @@ modes:
   - number: 2004
     name: Bracketed paste
     category: input
-  - number: 1004
-    name: Focus in/out events
-    category: input
-  - number: 1006
-    name: SGR mouse reporting
-    category: input
-  - number: 1016
-    name: SGR-pixel mouse reporting
-    category: input
   - number: 1049
     name: Alternate screen buffer
     category: window
   - number: 7
     name: Auto-wrap (DECAWM)
     category: other
+
+# Mouse reporting, in the order the protocols appeared.  Every one of these is a DEC
+# private mode, so DECRQM answers them and no separate probe is needed.
+mouse_modes:
+  - number: 9
+    name: X10 compatibility mouse reporting
+  - number: 1000
+    name: VT200 mouse — report button press and release
+  - number: 1001
+    name: Highlight mouse tracking
+  - number: 1002
+    name: Button-event tracking (motion while pressed)
+  - number: 1003
+    name: Any-event tracking (motion always)
+  - number: 1004
+    name: Focus in/out events
+  - number: 1005
+    name: UTF-8 extended coordinates
+  - number: 1006
+    name: SGR extended coordinates
+  - number: 1007
+    name: Alternate-scroll mode
+  - number: 1015
+    name: urxvt extended coordinates
+  - number: 1016
+    name: SGR-pixel coordinates
+  - number: 2029
+    name: Passive mouse tracking (Contour extension)
+    note: >-
+      Lets an application receive mouse position without taking the mouse away from the
+      user's selection. Contour's own extension; no other terminal implements it yet.
+
+# --- cross-checks between the measured and documented tables -----------------------
+# The two halves of this report are produced by different methods: one asks the running
+# terminal, the other reads its source and documentation.  Where they cover the same
+# feature they should agree, and where they do not, the disagreement is itself worth
+# printing -- it is usually a feature that exists but ships disabled, which is exactly
+# what a reader needs to know.  The report computes these rather than asserting them, so
+# the list cannot go stale.
+cross_checks:
+  - probe_field: sixel
+    row: sixel
+  - probe_field: kitty_graphics
+    row: kitty_graphics_protocol
+  - probe_field: kitty_clipboard_protocol
+    row: kitty_clipboard_protocol
+  - probe_field: osc52_clipboard
+    row: osc52_clipboard
+  - probe_field: kitty_keyboard
+    row: kitty_keyboard_protocol
+  - probe_field: colored_underlines
+    row: underline_color_sgr58
+  - probe_field: styled_underlines
+    row: underline_styles_curly
 
 # --- ucs-detect Unicode test categories -------------------------------------------
 unicode_categories:

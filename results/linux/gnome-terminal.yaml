@@ -1,12 +1,12 @@
 ambiguous_width: 1
-datetime: 2026-07-19 08:54:38 UTC
+datetime: 2026-07-19 09:07:18 UTC
 environment:
   COLORTERM: truecolor
   TERM: xterm-256color
 height: 24
 preferred_encoding: UTF-8
 python_version: 3.14.6
-seconds_elapsed: 45.89437855401775
+seconds_elapsed: 56.54817705298774
 session_arguments:
   all: false
   limit_category_time: 240.0
@@ -1423,7 +1423,7 @@ terminal_results:
       kcuu1: "\e[A"
       kdch1: "\e[3~"
       kend: "\e[F"
-      kent: "\rx\x05YOV"
+      kent: ''
       kf1: "\eOP"
       kf10: "\e[21~"
       kf11: "\e[23~"
