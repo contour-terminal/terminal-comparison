@@ -964,10 +964,10 @@
       when logging back in'), shows a 'Restored session' banner, and restores the working directory via
       its installed shell-integration scripts
 - id: remote_ssh_integration
-  name: Remote/SSH integration (e.g. kitten ssh)
+  name: Remote/SSH integration
   category: session
   support:
-    contour: 'no'
+    contour: 'yes'
     kitty: 'yes'
     ghostty: 'yes'
     foot: 'no'
@@ -981,7 +981,11 @@
     alacritty: 'no'
     apple-terminal: partial
   evidence:
-    contour: No remote-control or ssh-kitten-equivalent feature found (no 'remote control'/'kitten' matches)
+    contour: src/vtpty/SshSession.{h,cpp} -- an SSH client embedded via libssh2, implemented as a Pty
+      so a session connects without spawning /usr/bin/ssh. loadSshConfig() reads ~/.ssh/config (SshSession.cpp:459-461);
+      SshHostConfig carries hostname, port, user, private/public key files, known-hosts file and forwardAgent;
+      host keys are verified through libssh2_knownhost_*. Exposed per profile as the `ssh:` config entry
+      (src/contour/Config.h:598)
     kitty: docs/kittens/ssh.rst - shell integration bootstrap, terminfo copy, config cloning, forwarded
       remote-control socket over SSH
     ghostty: src/cli/ssh.zig ('ghostty +ssh' wraps ssh, auto-installs terminfo, forwards TERM/env); src/cli/ssh_cache.zig;
@@ -1009,6 +1013,10 @@
     apple-terminal: Native Shell > New Remote Connection (Shift-Command-K) browses Bonjour-advertised
       and known ssh/sftp/ftp/telnet hosts and launches a connection — support.apple.com/guide/terminal/connect-to-servers-in-terminal-trml1018/mac
       — but it is likewise just a connection launcher, not a deep remote-protocol integration
+  notes: Two different things share this row. Contour embeds an SSH client (libssh2) and connects directly,
+    so the terminal itself is the SSH client. kitty's ssh kitten and WezTerm's ssh_domains instead wrap
+    or drive a connection in order to bootstrap terminfo and shell integration on the far end. Both are
+    real integration; they solve different halves of the problem, and neither subsumes the other.
 - id: multiplexer_built_in
   name: Built-in multiplexer (detachable, tmux-like)
   category: session

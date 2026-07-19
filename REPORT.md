@@ -439,7 +439,7 @@ Compiled from official documentation and source.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Shell integration (semantic prompt marks) | yes | yes | yes | yes | yes | yes | yes | no | no | yes | partial | yes | partial |
 | Session restore | no | partial | partial | no | partial | yes | no | no | no | yes | no | yes | yes |
-| Remote/SSH integration (e.g. kitten ssh) | no | yes | yes | no | yes | yes | no | no | no | partial | no | yes | partial |
+| Remote/SSH integration | yes | yes | yes | no | yes | yes | no | no | no | partial | no | yes | partial |
 | Built-in multiplexer (detachable, tmux-like) | no | no | no | no | yes | no | no | no | no | no | no | partial | no |
 
 ## Licence
