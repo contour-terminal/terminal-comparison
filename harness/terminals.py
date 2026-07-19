@@ -116,6 +116,15 @@ def _contour_binary() -> str:
     return os.environ.get("CONTOUR_BIN", "contour")
 
 
+def _rio_binary() -> str:
+    """Prefer an explicitly built Rio, else whatever is installed.
+
+    Rio is packaged for few distributions yet, so measuring it usually means pointing
+    RIO_BIN at a `cargo build --release` tree, the same way CONTOUR_BIN works.
+    """
+    return os.environ.get("RIO_BIN", "rio")
+
+
 TERMINALS: tuple[Terminal, ...] = (
     Terminal(
         key="contour", name="Contour",
@@ -201,6 +210,17 @@ TERMINALS: tuple[Terminal, ...] = (
             MACOS: Launch(binary="alacritty", exec_args=("-e",),
                           candidates=("/Applications/Alacritty.app/Contents/MacOS/alacritty",)),
             WINDOWS: Launch(binary="alacritty.exe", exec_args=("-e",)),
+        },
+    ),
+    Terminal(
+        key="rio", name="Rio",
+        homepage="https://rioterm.com/",
+        notes="First implementation of Glyph Protocol, which it also specifies.",
+        launches={
+            LINUX: Launch(binary=_rio_binary(), exec_args=("-e",), verified=True),
+            MACOS: Launch(binary="rio", exec_args=("-e",),
+                          candidates=("/Applications/Rio.app/Contents/MacOS/rio",)),
+            WINDOWS: Launch(binary="rio.exe", exec_args=("-e",)),
         },
     ),
     Terminal(

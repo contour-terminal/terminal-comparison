@@ -1,0 +1,48 @@
+{
+  "pages": {
+    "decxcpr": false,
+    "reports_page": false,
+    "multiple_pages": false,
+    "pages_reachable": 1,
+    "probe_ceiling": 32,
+    "hit_probe_ceiling": false,
+    "raw": {
+      "decxcpr": "''"
+    }
+  },
+  "page_sequences": {
+    "np_pp": false,
+    "raw": {}
+  },
+  "locator": {
+    "decrqlp": false,
+    "locator_available": false,
+    "raw": {
+      "decrqlp": "''"
+    }
+  },
+  "rtl": {
+    "answers_dsr": true,
+    "delta_ltr": 1,
+    "delta_rtl": 1,
+    "rtl_honoured": false,
+    "raw": {
+      "note": "one Hebrew letter from column 40: 1 column(s) with DECRLM reset, 1 with it set"
+    }
+  },
+  "glyph_protocol": {
+    "supported": true,
+    "formats": [
+      "glyf",
+      "colrv0",
+      "colrv1"
+    ],
+    "registers": true,
+    "glossary_confirms": true,
+    "raw": {
+      "support": "'\\x1b_25a1;s;fmt=glyf,colrv0,colrv1\\x1b\\\\'",
+      "register": "'\\x1b_25a1;r;cp=100000;status=0\\x1b\\\\'",
+      "query": "'\\x1b_25a1;q;cp=100000;status=glossary\\x1b\\\\'"
+    }
+  }
+}

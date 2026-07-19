@@ -16,6 +16,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/SixelParser.h/.cpp, Color.h DEC-HLS conversion, Image.h
@@ -39,6 +40,7 @@
     xterm: graphics_sixel.c/.h in xterm-406, the origin of the sequence
     alacritty: 'github.com/alacritty/alacritty issue #910 (open, unimplemented) and PR #4763 (graphics
       support, declined/unmerged by maintainers); no sixel code in mainline alacritty'
+    rio: "rio-backend/src/performer/handler.rs:942-985 wires the DCS hook/put/unhook to sixel::Parser; crosswords/mod.rs:3507-3542 sixel_graphic_start/put/finish into insert_graphic"
   notes: GNOME Terminal/VTE support is real but opt-in at build time, so most distro binaries ship without
     it. Kitty and Ghostty deliberately do not implement Sixel, favoring their own graphics protocols;
     Alacritty's maintainers have repeatedly declined graphics support.
@@ -60,6 +62,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h ITERM2 = OSC(1337, ...); src/vtbackend/Screen.cpp processITerm2()/renderITerm2InlineImage()
@@ -82,6 +85,7 @@
     xterm: no OSC 1337 handling found anywhere in xterm-406 sources
     alacritty: no OSC 1337 image handling in mainline; only available via the unmerged ayosec/alacritty
       graphics fork
+    rio: "rio-backend/src/performer/handler.rs:1136-1140 OSC 1337 into iterm2_image_protocol::parse then insert_graphic; rio-backend/src/ansi/iterm2_image_protocol.rs implements File="
   notes: Ghostty explicitly logs OSC 1337 File= as unimplemented in its iterm2.zig OSC parser as of this
     checkout — it is not a rendering gap, the code path is a stub. Windows Terminal's OSC 1337 support
     is unrelated to images (shell-integration marks only).
@@ -103,6 +107,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Screen.h replyKittyGraphics()/renderKittyImage()/deleteKittyGraphics(), kitty_graphics::Command;
@@ -123,8 +128,56 @@
       feature request gitlab.com/gnachman/iterm2/-/issues/7825
     xterm: no kitty-graphics code in xterm-406
     alacritty: not in supported-terminal list (kitty, wezterm, wayst, konsole); no code in mainline alacritty
+    rio: "handler.rs:1464-1488 apc_start/put/end into process_apc_buffer (685-819) parsing the 'G' APC with transmit/display/placement/delete and chunking; kitty_virtual.rs adds Unicode placeholders"
   notes: Foot's non-support is a deliberate upstream design decision (Sixel only), not an oversight —
     see codeberg.org/dnkl/foot/issues/481.
+- id: glyph_protocol
+  name: Glyph Protocol (runtime glyph registration)
+  category: graphics
+  sequence: APC 25a1 ; <verb> [ ; key=value ]* [ ; base64-payload ] ST
+  spec: https://github.com/raphamorim/rio/blob/main/specs/glyph-protocol.md
+  support:
+    contour: 'no'
+    kitty: 'no'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    rio: 'yes'
+    apple-terminal: 'no'
+  evidence:
+    contour: no APC 25a1 handler anywhere in src/vtbackend
+    kitty: no 25a1 identifier in kitty/*.c; the APC dispatch handles only the 'G' graphics prefix
+    ghostty: src/terminal/apc/glyph/{request,response,execute,Glossary}.zig; the 25a1 prefix is matched at
+      src/terminal/apc.zig:75. Landed on main 2026-04-19, after the v1.3.1 release of 2026-03-13, so no
+      released binary has it yet. execute.zig supported_formats advertises glyf only, no colour payloads
+    foot: no 25a1 identifier anywhere in foot
+    wezterm: no APC 25a1 handler; the only 25a1 match in the tree is a hex colour in config/src/scheme_data.rs
+    gnome-terminal: no glyph-registration protocol in VTE; VTE's APC handling does not dispatch on a payload
+      identifier
+    konsole: no 25a1 identifier anywhere in konsole
+    windows-terminal: no 25a1 identifier in src/terminal
+    mintty: no 25a1 identifier anywhere in mintty
+    iterm2: no APC 25a1 handler; the only 25a1 matches in the tree are inside test fixture hashes
+    xterm: no 25a1 identifier in xterm-406; xterm's runtime-glyph answer is DECDLD, which is bitmap and
+      not namespace-restricted
+    alacritty: no APC payload dispatch beyond the kitty-graphics passthrough it does not implement either
+    rio: rio-backend/src/ansi/glyph_protocol.rs (parser, verbs, reply encoders) and sugarloaf/src/font/glyph_registry.rs;
+      the protocol's own spec lives in this tree at specs/glyph-protocol.md
+    apple-terminal: no evidence of any APC-based glyph registration in Terminal.app
+  notes: 'A 2026 protocol for shipping a vector glyph to the terminal at runtime and rendering it from a
+    Private Use Area codepoint, so a TUI need not ask the user to install a patched font. Rio, whose author
+    designed it, is the first implementation and carries the spec. Ghostty is the case worth reading closely:
+    the implementation is on main but landed after v1.3.1, so this documented "yes" and the measured "no"
+    in the probe table above are both correct and describe different artefacts — the source and the shipped
+    binary. Ghostty also advertises only fmt=glyf, so its answer would be monochrome-only where Rio accepts
+    the two colour payloads as well.'
 - id: regis
   name: ReGIS vector graphics
   category: graphics
@@ -143,6 +196,7 @@
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/regis/ (ReGISParser, ReGISContext, ReGISRasterizer, ReGISFont, ReGISTextRasterizer,
@@ -159,6 +213,7 @@
       Request: Sixel & ReGis support'')'
     xterm: graphics_regis.c / graphics_regis.h in xterm-406
     alacritty: 'unimplemented per github.com/alacritty/alacritty issue #8428'
+    rio: "no ReGIS parser anywhere outside target/; the only matches are unrelated register/reregister identifiers in corcovado and sugarloaf"
   notes: 'ReGIS is effectively a two-terminal feature today: xterm (VT330/340 heritage) and Contour, which
     built a fairly complete rasterizer including its own font/text renderer for ReGIS canvases.'
 - id: mode_2027_grapheme_clustering
@@ -179,6 +234,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h (DECMode::Unicode -> 2027), Screen.cpp late-codepoint width-revision
@@ -208,6 +264,7 @@
     xterm: no match for 2027 (or 'grapheme') anywhere in xterm-406 source or ctlseqs.txt
     alacritty: alacritty/vte src/ansi.rs NamedPrivateMode enum (its central mode registry) tops out at
       SyncUpdate=2026; no Grapheme variant exists
+    rio: "rio-backend/src/ansi/mode.rs PrivateMode::new() has no 2027 arm, so it falls to Unknown; the Mode bitflags at crosswords/mod.rs:74-111 have no grapheme-cluster flag"
   notes: 'kitty, Windows Terminal and mintty each reuse the wire compatibility surface without implementing
     the real negotiable-mode semantics: kitty is always-on with no mode at all, WT is always-on but answers
     DECRQM correctly as permanent, and mintty repurposes the number for plain emoji-width toggling. Independently
@@ -232,6 +289,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:830-835 DECMode::BatchedRendering=36 mapped to mode 2026 at :1354;
@@ -258,6 +316,7 @@
     alacritty: alacritty/vte src/ansi.rs:967 NamedPrivateMode::SyncUpdate=2026, commented '/* The mode
       is handled automatically by [Processor] */'; alacritty_terminal/src/event_loop.rs implements the
       actual batching with a timeout-bounded PTY read (so a misbehaving app can't freeze the display forever)
+    rio: "ansi/mode.rs:70,122 NamedPrivateMode::SyncUpdate=2026; performer/handler.rs:39-42 BSU_CSI/ESU_CSI with buffering at 550-660 and a 150ms SYNC_UPDATE_TIMEOUT safeguard"
   notes: Widely adopted; xterm and VTE/GNOME Terminal are the two holdouts among the twelve. VTE has the
     mode number catalogued for correct DECRQM bookkeeping but never wires it to rendering.
 - id: kitty_text_sizing_osc66
@@ -278,6 +337,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/TextSizing.h implements the full field set (s=scale, w=width, n/d=fractional
@@ -300,6 +360,7 @@
     iterm2: GitHub code search over gnachman/iTerm2 for 'OSC 66' returns zero hits
     xterm: no match for OSC 66 / text-sizing in xterm-406 source or ctlseqs.txt
     alacritty: alacritty/vte src/ansi.rs has no OSC 66 / multicell / text-sizing handling
+    rio: "no OSC 66 arm in the osc_dispatch table of rio-backend/src/performer/handler.rs, which handles 0,2,4,7,8,9,777,10,11,12,22,50,52,104,110-112,1337"
   notes: This is a 2024/2025-era kitty-originated protocol; outside kitty, only ghostty and Contour implement
     it fully, and foot implements a deliberately reduced subset.
 - id: decdwl_decdhl
@@ -320,6 +381,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:619-621 registers DECDHL_Bottom, DECDHL_Top, DECDWL as ESC sequences
@@ -349,6 +411,7 @@
       CASE_DECDHL/CASE_DECDWL
     alacritty: alacritty/vte src/ansi.rs:1814 -- the only '#'-intermediate ESC handled is (b'8',[b'#'])
       => self.handler.decaln(); no case for '3'/'4'/'6' exists anywhere in the crate
+    rio: "esc_dispatch at handler.rs:1428-1455 handles the '#' intermediate only for byte '8' (DECALN, line 1448); no arms for 3/4/5/6 and no DECDWL/DECDHL anywhere"
   notes: 'A genuine three-way split: xterm/Windows Terminal/mintty/Konsole/iTerm2 keep this VT100-era
     feature; every GPU-accelerated 2020s terminal in this set (kitty, ghostty, foot, alacritty) has dropped
     it outright; wezterm and Contour are the exceptions that still render it. VTE recognizes the syntax
@@ -371,6 +434,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:58-61,712-715 (CSIUENHCE/CSIUENTER/CSIULEAVE/CSIUQUERY); src/vtbackend/Screen.cpp:6723-6753
@@ -386,6 +450,7 @@
       as of this check); no kitty-protocol dispatch found in current src/modes.py or parser sources
     alacritty: 'alacritty_terminal/src/term/mod.rs TermMode::DISAMBIGUATE_ESC_CODES/REPORT_EVENT_TYPES/REPORT_ALTERNATE_KEYS/REPORT_ALL_KEYS_AS_ESC/REPORT_ASSOCIATED_TEXT
       bitflags; PR #7125'
+    rio: "csi_dispatch handler.rs:1376-1394 handles CSI ?u query, CSI =u set, CSI >u push and CSI <u pop; frontends/rioterm/src/bindings/kitty_keyboard.rs build_key_sequence used at screen/mod.rs:770"
     mintty: 'mintty/wiki/Changelog.md only mentions ''kitty'' re: an unrelated unscroll sequence and SGR
       58/59 underline colour; no keyboard-protocol code found in src/'
     iterm2: https://gitlab.com/gnachman/iterm2/-/issues/10017 'Implement Kitty's keyboard protocol' is
@@ -416,6 +481,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:262,817 (MODIFYOTHERKEYS, CSI > Pm m); src/vtbackend/InputGenerator.h:655-659
@@ -439,6 +505,7 @@
       implements its own non-xterm-compatible win32-input-mode
     alacritty: 'open, still-unimplemented GitHub issue #3101 ''Implement modifyOtherKeys'' (filed 2019);
       no corresponding TermMode bitflag in alacritty_terminal/src/term/mod.rs'
+    rio: "no modifyOtherKeys handling anywhere; csi_dispatch has no ('m',['>']) arm, only the plain SGR ('m',[]) at handler.rs:1307"
   notes: 'kitty is a deliberate ''no'': it recognizes and parses the sequence but refuses to act on it,
     logging a warning that steers applications to the kitty keyboard protocol instead. Windows Terminal
     and VTE-based terminals (GNOME Terminal, Tilix, ...) have no implementation at all, relying on their
@@ -463,6 +530,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:807,1316 DECMode::BracketedPaste <-> 2004; src/vtbackend/InputGenerator.h:609
@@ -479,6 +547,7 @@
     iterm2: long-standing, widely documented iTerm2 feature (Terminal Profile Preferences)
     xterm: xcharmouse.h SET_BRACKETED_PASTE definition; xterm originated the feature
     alacritty: alacritty_terminal/src/term/mod.rs TermMode::BRACKETED_PASTE bitflag, wired in set/reset/report_mode
+    rio: "ansi/mode.rs:70,120 NamedPrivateMode::BracketedPaste=2004; crosswords/mod.rs:1997 set_private_mode inserts Mode::BRACKETED_PASTE"
   notes: ''
 - id: focus_events
   name: Focus in/out reporting
@@ -498,6 +567,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:808,1317 DECMode::FocusTracking <-> 1004; src/vtbackend/InputGenerator.cpp:1144-1166
@@ -513,6 +583,7 @@
     iterm2: long-standing, widely documented iTerm2/xterm-compatible feature
     xterm: input.c and ptyx.h implement 1004 (xterm originated focus reporting)
     alacritty: alacritty_terminal/src/term/mod.rs TermMode::FOCUS_IN_OUT bitflag, NamedPrivateMode::ReportFocusInOut
+    rio: "ansi/mode.rs:64,114 NamedPrivateMode::ReportFocusInOut=1004; crosswords/mod.rs:1996 set_private_mode inserts Mode::FOCUS_IN_OUT"
   notes: ''
 - id: sgr_mouse
   name: SGR extended mouse reporting
@@ -532,6 +603,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:816-817,1321 DECMode::MouseSGR <-> 1006
@@ -547,6 +619,7 @@
     iterm2: documented, widely-supported xterm-compatible feature
     xterm: button.c SET_SGR_EXT_MODE_MOUSE -- xterm originated SGR mouse mode
     alacritty: alacritty_terminal/src/term/mod.rs TermMode::SGR_MOUSE bitflag, NamedPrivateMode::SgrMouse
+    rio: "ansi/mode.rs:66,116 NamedPrivateMode::SgrMouse=1006; crosswords/mod.rs:2001 set_private_mode inserts Mode::SGR_MOUSE"
   notes: ''
 - id: sgr_pixel_mouse
   name: SGR-Pixel mouse reporting
@@ -566,6 +639,7 @@
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:822-823,1323 DECMode::MouseSGRPixels <-> 1016; src/vtbackend/InputGenerator.cpp:1329
@@ -585,6 +659,7 @@
     xterm: button.c SET_PIXEL_POSITION_MOUSE -- xterm (>=xterm-359) originated this mode
     alacritty: alacritty_terminal/src/term/mod.rs TermMode bitflags list has SGR_MOUSE but no SGR-pixel
       equivalent; not implemented
+    rio: "mode 1016 is absent from the PrivateMode::new() match in ansi/mode.rs, which names only 1000,1002,1003,1004,1005,1006,1007,1042,1049,2004,2026"
   notes: This is the row with the most 'no's -- 1016 is much newer/rarer than the other input modes. GNOME/vte's
     own source explicitly distinguishes 'recognized' from 'implemented' via a WRITABLE flag, which is
     strong primary evidence for its 'no'.
@@ -606,6 +681,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:851 HYPERLINK = detail::OSC(8, ...)
@@ -627,6 +703,7 @@
       exists anywhere in the tree -- a long-standing, deliberate xterm gap
     alacritty: alacritty/vte src/ansi.rs:1393 b"8" if params.len() > 2 => ... self.handler.set_hyperlink(...);
       supported since v0.11.0 (2022-10-13)
+    rio: "handler.rs:1045-1048 OSC 8 into set_hyperlink(osc::parse_hyperlink); consumed across frontends/rioterm/src (mouse/mod.rs, hints.rs, grid_emit.rs) for click and hint rendering"
   notes: Konsole gates hyperlink recognition behind an opt-in extractor that is off by default in most
     shipped profiles.
 - id: osc52_clipboard
@@ -647,6 +724,7 @@
     iterm2: partial
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:840 CLIPBOARD = detail::OSC(52,...); Screen.cpp:4103 impl::clipboard
@@ -674,6 +752,7 @@
       handles both ''?'' read and base64 write, gated by the allowWindowOps/disallowedWindowOps resources'
     alacritty: 'alacritty/vte src/ansi.rs:1483 b"52" -> clipboard_load (on ''?'') / clipboard_store; gated
       by config terminal.osc52: Disabled | OnlyCopy (default) | OnlyPaste | CopyPaste'
+    rio: "handler.rs:1107-1115 OSC 52 dispatches Load/Store; crosswords/mod.rs clipboard_store:2592 and clipboard_load:3208 build a real OSC 52 reply, so the query round-trip works"
   notes: Read (querying clipboard contents back into the app) is a well-known exfiltration vector, so
     most terminals default to write-only or gate reads behind an explicit opt-in; gnome-terminal refuses
     the whole sequence outright.
@@ -695,6 +774,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:876 KITTYCLIPBOARD = detail::OSC(5522,...); Screen.cpp:4767 processKittyClipboard()
@@ -715,6 +795,7 @@
       OSC 52, not the kitty OSC 5522 protocol'
     xterm: no '5522' match anywhere in xterm-406
     alacritty: alacritty/vte src/ansi.rs OSC dispatch table has no b"5522" arm
+    rio: "no 5522 anywhere in the tree; the osc_dispatch table in rio-backend/src/performer/handler.rs has no 5522 arm"
   notes: Ghostty parses the wire format but the handler is an explicit no-op stub, so it doesn't count
     as working support yet.
 - id: osc7_cwd
@@ -735,6 +816,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:866 SETCWD = detail::OSC(7,...)
@@ -756,6 +838,7 @@
     alacritty: 'not in alacritty/vte src/ansi.rs OSC dispatch table; PR #2937 ''Implement handling for
       OS escape code 7'' was closed unmerged (gh pr view 2937 --repo alacritty/alacritty: state=CLOSED,
       mergedAt=null)'
+    rio: "handler.rs:1036-1042 OSC 7 into osc::parse_current_directory then set_current_directory; stored at crosswords/mod.rs:2555 and used by frontends/rioterm/src/context/title.rs"
   notes: Konsole deliberately gets the cwd from /proc/<pid>/cwd (src/ProcessInfo.cpp) rather than parsing
     OSC 7 -- a platform-specific mechanism outside the escape-sequence protocol, so it is scored 'no'
     here even though the end-user feature (open-new-tab-in-same-dir) exists.
@@ -777,6 +860,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:862 SEMA = detail::OSC(133,...); Screen.cpp:6814 case SEMA -> processShellIntegration();
@@ -798,6 +882,7 @@
     xterm: xterm-406/misc.c OscMiscOps enum has no entry for 133
     alacritty: not in alacritty/vte src/ansi.rs OSC dispatch table; feature request alacritty/alacritty#5850
       remains open
+    rio: "no OSC 133 arm in the osc_dispatch table of rio-backend/src/performer/handler.rs, and no semantic-prompt or shell-integration code anywhere in the tree"
   notes: Alacritty deliberately keeps the OSC surface minimal; OSC 133 has been requested since 2022 but
     is not implemented.
 - id: osc9_osc777_notifications
@@ -818,6 +903,7 @@
     iterm2: partial
     xterm: 'no'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:850 CONEMU=OSC(9), :852 NOTIFY=OSC(777); Screen.cpp impl::CONEMU
@@ -846,6 +932,7 @@
       (plus OSC 9;4 progress); no evidence of OSC 777 (rxvt-style) support
     xterm: xterm-406/misc.c OscMiscOps enum has no entry for 9 or 777
     alacritty: not in alacritty/vte src/ansi.rs OSC dispatch table
+    rio: "handler.rs:1051-1073 routes both OSC 9 and OSC 777 to desktop_notification; crosswords/mod.rs:3195 forwards a RioEvent to application.rs:140 and rio_notifier::send_notification"
   notes: 'Several terminals implement the two codes asymmetrically: gnome-terminal, konsole and Windows
     Terminal each treat OSC 9 as ConEmu progress/cwd plumbing rather than a message popup, while giving
     OSC 777 (or, for gnome-terminal, neither) the actual notification behavior.'
@@ -867,6 +954,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Screen.cpp:3633,3643 case 38/48 -> parseColor()
@@ -885,6 +973,7 @@
     xterm: xterm-406/misc.c getDirectColor()/formatDirectColor(); charproc.c case 38/48
     alacritty: alacritty_terminal/src/term/mod.rs Attr::Foreground(color)/Attr::Background(color) with
       vte::ansi::Rgb; added ~2017
+    rio: "parse_sgr_color (handler.rs:44-54) handles Some(2) for 24-bit RGB, wired into the SGR 38/48 arms at 1528-1546, plus the colon form 38:2::r:g:b via handle_colon_rgb at 57-63"
   notes: Universal among actively-developed terminals; the only real variance historically was VTE's early
     days, long since resolved.
 - id: osc_4_10_11_palette
@@ -905,6 +994,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h SETCOLPAL=OSC(4), COLORFG=OSC(10), COLORBG=OSC(11)
@@ -926,6 +1016,7 @@
       is the origin of OSC 10/11
     alacritty: alacritty_terminal/src/term/mod.rs Handler::set_color()/dynamic_color_sequence() (vte::ansi::Handler
       trait)
+    rio: "OSC 4 at handler.rs:1017-1033 parses Set/Query and answers a Query through dynamic_color_sequence; OSC 10/11 at 1076-1092 do the same via parse_dynamic_colors"
   notes: 'Konsole marked partial: OSC 4 (256-color palette) set+query is implemented, but OSC 10/11 (dynamic
     default foreground/background) is not wired to any handler in the source tree -- Konsole''s colors
     are controlled only via profiles, not by these two escapes specifically.'
@@ -947,6 +1038,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:760 detail::CSI(std::nullopt, 0, 1, ' ', 'q', VTType::VT520, documentation::DECSCUSR)
@@ -963,6 +1055,7 @@
     iterm2: 'sources/VT100/VT100Terminal.m:2291 case VT100CSI_DECSCUSR:'
     xterm: xterm-406/VTPrsTbl.c CASE_DECSCUSR; misc.c:4932 " q" /* DECSCUSR */
     alacritty: alacritty_terminal/src/term/mod.rs fn set_cursor_style(), vte::ansi::CursorStyle
+    rio: "csi_dispatch ('q',[' ']) at handler.rs:1337-1352 maps Ps 0-6 to Block/Underline/Beam with blink; frontends/rioterm/src/grid_emit.rs:516-518 renders each CursorRenderStyle"
   notes: Universally supported; DECSCUSR is a VT520-era sequence that xterm adopted early and every modern
     terminal has followed.
 - id: underline_styles_curly
@@ -983,6 +1076,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/CellFlags.h Underline(3)/DoublyUnderlined(8)/CurlyUnderlined(9)/DottedUnderline(10)/DashedUnderline(11)
@@ -1007,6 +1101,7 @@
       only implements plain (4) and double (21) underline
     alacritty: alacritty_terminal/src/term/mod.rs Attr::Underline, Attr::DoubleUnderline, Attr::Undercurl,
       Attr::DottedUnderline, Attr::DashedUnderline
+    rio: "SGR colon arms [4,0]/[4,2]/[4,3]/[4,4]/[4,5] at handler.rs:1501-1506 parse Cancel/Double/Undercurl/Dotted/Dashed; grid_emit.rs DecorationStyle (390-400) rasterizes each"
   notes: Originated informally (kitty/VTE coordinated on the CSI 4:Ps encoding), now adopted almost everywhere
     except xterm, which deliberately keeps its SGR set minimal.
 - id: underline_color_sgr58
@@ -1027,6 +1122,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: 'src/vtbackend/Screen.cpp:3651 case 58: target.setUnderlineColor(parseColor(...))'
@@ -1048,6 +1144,7 @@
       support colored underlines
     alacritty: alacritty_terminal/src/term/mod.rs Attr::UnderlineColor(color) / UnderlineColorDefault
       handling
+    rio: "SGR 58 at handler.rs:1549-1553 resolves RGB or indexed into Attr::UnderlineColor(Some); SGR 59 at 1555 resets it to None"
   notes: Rarer than curly underline but still widely adopted; xterm is again the notable holdout. Konsole's
     implementation (setULColor) predates most others.
 - id: mode_2048_inband_resize
@@ -1068,6 +1165,7 @@
     iterm2: 'yes'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:1329 maps DECMode::InBandWindowResize to 2048; Terminal.h:1608
@@ -1087,6 +1185,7 @@
     xterm: no '2 0 4 8' (digit-spaced) hit in ctlseqs.txt nor '2048' in charproc.c; xterm has not adopted
       this newer terminal-wg proposal
     alacritty: no hit in alacritty_terminal/src/term/mod.rs (the ansi::Handler impl)
+    rio: "rio-backend/src/ansi/mode.rs PrivateMode::new/NamedPrivateMode has no 2048 entry; no 2048 anywhere in rio-backend/src"
   notes: A 2023-era community proposal (not yet a ratified terminal-wg standard); contour and kitty are
     the two reference implementations most others cite.
 - id: xtwinops
@@ -1107,6 +1206,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: partial
+    rio: 'partial'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:797 WINMANIP; src/vtbackend/Screen.cpp:4353-4467 implements Ps=1-4,8-11,13-16,18-23
@@ -1134,6 +1234,7 @@
       space (subject to the allowWindowOps resource)
     alacritty: 'alacritty_terminal/src/term/mod.rs:2235-2276: only text_area_size_pixels/chars (report)
       and push_title/pop_title implemented; no resize/iconify/move handlers found'
+    rio: "rio-backend/src/performer/handler.rs:1368-1375 't' match handles only Ps=14,16,18 (report) and 22,23 (title stack); no resize/move/iconify/maximize"
   notes: Nearly every terminal deliberately refuses application-driven resize/iconify/raise as a security/UX
     decision; mintty and iTerm2 are the two that actually perform it (both gated by user config/trust).
 - id: decslpp
@@ -1154,6 +1255,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Screen.cpp WINDOWMANIP switch has no case for Ps>=24; only SGR's unrelated
@@ -1178,6 +1280,7 @@
       VT100Terminal.m:2744 terminalSetRows:'
     xterm: ctlseqs.txt:1690,3760 "Ps >= 24 -> Resize to Ps lines (DECSLPP)"
     alacritty: no 't'-final-byte CSI resize-by-lines handler found in term/mod.rs
+    rio: "the same 't' match at handler.rs:1368-1375 has no Ps>=24 branch; falls through to csi_unhandled!()"
   notes: Almost universally dropped by modern terminals (resize-by-line-count from an application is considered
     a UX/security footgun); only mintty, iTerm2, xterm and VTE/gnome-terminal still honour it.
 - id: decscl_conformance_levels
@@ -1198,6 +1301,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:758 DECSCL CSI(...,'"','p',...); Screen.cpp comment block ~1190-1204
@@ -1218,6 +1322,7 @@
     xterm: ctlseqs.txt:482 " p -> DECSCL
     alacritty: no DECSCL/conformance hit anywhere in alacritty_terminal/src/term/mod.rs (the full ansi::Handler
       implementation)
+    rio: "no double-quote intermediate arm in csi_dispatch of rio-backend/src/performer/handler.rs; DECSCL unimplemented"
   notes: ghostty and wezterm both only fake a DECRQSS reply about DECSCL (or a static DA field) without
     actually implementing the set command — a case where surface-level string search would have produced
     a false positive.
@@ -1239,6 +1344,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:752-753 DECRQM (DEC form) and DECRQM_ANSI (ANSI form)
@@ -1255,6 +1361,7 @@
     iterm2: sources/VT100/VT100CSIParser.m:695,700 VT100CSI_DECRQM_DEC / VT100CSI_DECRQM_ANSI; VT100Terminal.m:2547,2555
     xterm: ctlseqs.txt:1500,1511 documents both DECRQM forms; charproc.c implements them
     alacritty: 'term/mod.rs:2135 fn report_mode(&mut self, mode: ansi::Mode)'
+    rio: "handler.rs:1321-1328 dispatches ('p',[$]) and ('p',[?,$]); crosswords/mod.rs:1916-1936 report_mode and 2092-2147 report_private_mode reply $y"
   notes: 'ghostty''s gap is real but narrow: it answers DEC-private DECRQM queries but not the plainer
     ANSI-mode form.'
 - id: decrqcra
@@ -1275,6 +1382,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:258-259,745 DECRQCRA plus the XTCHECKSUM deviation-selection extension;
@@ -1300,6 +1408,7 @@
     xterm: ctlseqs.txt:1817-1826; charproc.c:5613-5627 CASE_DECRQCRA, unconditional (subject only to the
       general checksum_ext resource for the XTCHECKSUM-style deviation bits)
     alacritty: no checksum/DECRQCRA hit anywhere in alacritty_terminal/src/term/mod.rs
+    rio: "no '*' intermediate and no 'y' action in rio-backend/src/performer/handler.rs csi_dispatch; DECRQCRA absent"
   notes: 'This is the single most consistent security-gating pattern found across the whole survey: wezterm,
     VTE, konsole and Windows Terminal all implement the real checksum but disable it by default (or entirely
     outside debug builds) because it lets a program read screen contents cell-by-cell; only contour, mintty
@@ -1322,6 +1431,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:734,739,740 register '$v'/'$z'/'$x' (DECCRA/DECERA/DECFRA), all
@@ -1344,6 +1454,7 @@
     iterm2: 'sources/VT100/VT100Terminal.m:1090 executeDECCRA:, :1105 executeDECFRA:, :1129 executeDECERA:'
     xterm: ctlseqs.txt:1748 DECCRA, :1811 DECFRA, :1848 DECERA
     alacritty: no DECCRA/DECFRA/DECERA hit in alacritty_terminal/src/term/mod.rs
+    rio: "no 'v'/'x'/'z' CSI actions (DECCRA/DECFRA/DECERA) in rio-backend/src/performer/handler.rs csi_dispatch"
   notes: 'A clean split: every terminal with a genuine VT420-lineage legacy-DEC implementation (contour,
     foot, VTE, Windows Terminal, mintty, iTerm2, xterm) has all three; every ''clean-slate'' modern terminal
     (kitty, ghostty, wezterm, alacritty) has none of them, and konsole — despite being KDE''s legacy-minded
@@ -1366,6 +1477,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: partial
+    rio: 'partial'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:769 DECSTBM; primitives.h:798,1035,1309 DECMode::LeftRightMargin
@@ -1388,6 +1500,7 @@
     xterm: ctlseqs.txt:965,1107 DECLRMM enable/disable via mode 69; DECSTBM documented since VT100
     alacritty: term/mod.rs:2155 fn set_scrolling_region(top, bottom) (DECSTBM) takes only top/bottom;
       no left/right-margin (DECLRMM/DECSLRM) handler found
+    rio: "DECSTBM only: handler.rs:1353-1360 into crosswords/mod.rs:3339 set_scrolling_region; no DECLRMM/DECSLRM and no mode 69 in ansi/mode.rs"
   notes: 'DECSTBM (VT100-era) is universal. DECLRMM (VT420 left/right margins) is the rarer half: kitty,
     foot, konsole and alacritty all stop at top/bottom-only.'
 - id: decsca
@@ -1408,6 +1521,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:757 DECSCA CSI(...,'"','q',...)
@@ -1424,6 +1538,7 @@
       (VT100CSIParser.m:555)'
     xterm: ctlseqs.txt:484,1551 " q -> DECSCA
     alacritty: no DECSCA/protection-attribute hit in alacritty_terminal/src/term/mod.rs
+    rio: "no ('q', double-quote) arm in rio-backend/src/performer/handler.rs csi_dispatch; DECSCA absent"
   notes: 'Same modern-vs-legacy split as the rectangular-area ops: kitty/foot/wezterm/alacritty/konsole
     skip this VT220 legacy feature entirely.'
 - id: osc22_pointer_shape
@@ -1444,6 +1559,7 @@
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:877 POINTERSHAPE = detail::OSC(22, ...)
@@ -1463,6 +1579,7 @@
     iterm2: no OSC-22/pointer-shape hit anywhere in sources/VT100/VT100Terminal.m
     alacritty: no OSC-22/pointer-shape hit in alacritty_terminal/src/term/mod.rs; only local mouse-config
       (alacritty/src/config/mouse.rs), not a protocol handler
+    rio: "rio-backend/src/performer/handler.rs:1094-1098 osc_dispatch b\"22\" into osc::parse_mouse_cursor_icon then set_mouse_cursor_icon"
   notes: xterm's OSC 22 handling is the original (narrower) proposal; kitty later published a richer,
     system-independent spec (named shapes, push/pop stack, query) that contour, ghostty and foot all implement.
     gnome-terminal/konsole/wezterm/iTerm2/alacritty/windows-terminal implement no protocol-level pointer-shape
@@ -1485,6 +1602,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/Functions.h:197,837 XTGETTCAP registered as DCS('+','q',...)
@@ -1502,6 +1620,7 @@
     mintty: 'src/termout.c:4147 explicit comment: "No DECUDK (User-Defined Keys) or xterm termcap/terminfo
       data."'
     alacritty: no XTGETTCAP/termcap hit in alacritty_terminal/src/term/mod.rs
+    rio: "handler.rs hook/put/unhook 934-982 implement DCS + q ... ST; process_xtgettcap_request at 1580-1713; xtgettcap_response in crosswords/mod.rs:4103"
   notes: mintty is a rare case of an EXPLICIT, documented non-implementation rather than silent absence.
 - id: decset_1049_altscreen
   name: Alternate screen buffer (DEC private modes 47 / 1047 / 1049)
@@ -1521,6 +1640,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'partial'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:731,739,1040-1060 models 47/1047/1049 as a 3-row {carryCursor,clearOnEnter,clearOnExit}
@@ -1543,6 +1663,7 @@
       all three modes
     alacritty: alacritty_terminal/src/term/mod.rs:1946,2009 NamedPrivateMode::SwapScreenAndSetRestoreCursor
       -> swap_alt()
+    rio: "ansi/mode.rs:69 maps 1049 only (SwapScreenAndSetRestoreCursor); modes 47 and 1047 absent from PrivateMode::new entirely"
   notes: The one universally-supported row in this whole batch — every terminal surveyed implements at
     least mode 1049.
 - id: dec_page_memory
@@ -1563,6 +1684,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:454 MaxPageCount = 16 with the last index reserved for the alternate
@@ -1578,6 +1700,7 @@
       only has one page, this is ignored" -- recognised, deliberately no-op
     konsole: measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
+    rio: "no NP/PP/PPA arms in handler.rs; Crosswords models only grid + inactive_grid (primary and alternate), with no page memory"
     windows-terminal: src/terminal/adapter/PageManager.hpp:66 MAX_PAGES = 6 with an array of six independent
       TextBuffers; PageManager.cpp:152-225 MoveTo swaps row content and carries cursor position and attributes
       across; paging is disabled on the alt buffer (PageManager.cpp:122-125), so this is not scrollback
@@ -1612,6 +1735,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: 'measured by harness/vt_probe.py on this machine: replies with the page parameter'
@@ -1625,6 +1749,7 @@
     konsole: measured by harness/vt_probe.py on this machine
     alacritty: vte src/ansi.rs has only ('n', []) among the 'n' arms -- no ('n', [b'?']) -- so `CSI ?
       6 n` reaches the unhandled arm and is dropped without a reply
+    rio: "handler.rs:1319 has ('n',[]) but no ('n',[?]) arm, so CSI ? 6 n is dropped unanswered; the plain DSR 6 reply at crosswords/mod.rs:2962 carries no page parameter"
     gnome-terminal: vteseq.cc:6552-6596 replies with the page hardcoded to 1, commented "Always report
       page 1 here (per XTERM source code)"
     xterm: charproc.c:4589-4633 answers with a page field, but the value is the literal 1 and the field
@@ -1661,6 +1786,7 @@
     iterm2: 'no'
     xterm: partial
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: 'measured by harness/vt_probe.py on this machine: DECRQLP answered with a DECLRP position
@@ -1671,6 +1797,7 @@
     wezterm: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
     konsole: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
+    rio: "no DECELR/DECSLE/DECRQLP and no apostrophe-intermediate handling in rio-backend/src/performer/handler.rs"
     gnome-terminal: 'vteseq.cc recognises DECELR/DECRQLP/DECSLE with empty bodies marked ''TODO: implement'',
       and answers DSR 53/55/56 with an explicit ''no locator'''
     windows-terminal: no VTID for 'z, '{ or '| among the 133 entries in parser/OutputStateMachineEngine.hpp
@@ -1706,6 +1833,7 @@
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:1295 {DECMode::MouseProtocolX10, 9}; InputGenerator.cpp:1251
@@ -1720,6 +1848,7 @@
     windows-terminal: ModeParams jumps DECARM=8 to ATT610=12; no X10 entry
     iterm2: VT100Terminal.m:796-798 case 9 carries an explicit TODO and does nothing
     alacritty: no 9 in NamedPrivateMode; unknown modes are ignored
+    rio: "mode 9 absent from PrivateMode::new/NamedPrivateMode in rio-backend/src/ansi/mode.rs; falls to PrivateMode::Unknown and is ignored (crosswords/mod.rs:1961-1964)"
   notes: The oldest protocol, and the least uniformly kept. Several terminals recognise the mode number
     and deliberately do nothing with it.
 - id: mouse_vt200
@@ -1740,6 +1869,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:1310
@@ -1747,6 +1877,7 @@
     kitty: modes.h:62 (named MOUSE_BUTTON_TRACKING internally)
     gnome-terminal: src/modes.py:1247
     alacritty: vte crate src/ansi.rs:956
+    rio: "ansi/mode.rs:61 maps 1000 to NamedPrivateMode::ReportMouseClicks; crosswords/mod.rs:1978-1983/2060-2064 set/unset Mode::MOUSE_REPORT_CLICK"
     ghostty: src/terminal/modes.zig
     foot: csi.c mouse mode dispatch
     wezterm: csi.rs DecPrivateModeCode
@@ -1773,6 +1904,7 @@
     iterm2: 'no'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     xterm: button.c:748 VT200_HIGHLIGHT_MOUSE, with the full round-trip protocol -- the only complete
@@ -1791,6 +1923,7 @@
     mintty: no 1001 in termout.c
     iterm2: VT100Terminal.m:842-843 explicit TODO, not implemented
     alacritty: not in NamedPrivateMode
+    rio: "mode 1001 absent from PrivateMode::new/NamedPrivateMode in rio-backend/src/ansi/mode.rs; no highlight-tracking code in crosswords/mod.rs"
   notes: The interesting row. xterm is the only full implementation. Contour and VTE both answer DECRQM
     affirmatively while emitting nothing, so a mode query is not sufficient to detect it -- which is why
     the measured table reports Contour as supporting a mode it does not honour.
@@ -1812,6 +1945,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: direct mode handler confirmed in the source tree
@@ -1826,6 +1960,7 @@
     iterm2: direct mode handler confirmed in the source tree
     xterm: direct mode handler confirmed in the source tree
     alacritty: direct mode handler confirmed in the source tree
+    rio: "ansi/mode.rs:62 maps 1002 to NamedPrivateMode::ReportCellMouseMotion; crosswords/mod.rs:1984-1989/2065-2069 set/unset Mode::MOUSE_DRAG"
   notes: Motion reported while a button is held. kitty calls it MOUSE_MOTION_TRACKING.
 - id: mouse_any_event
   name: Any-event tracking (mode 1003)
@@ -1845,6 +1980,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'yes'
+    rio: 'yes'
     apple-terminal: unknown
   evidence:
     contour: direct mode handler confirmed in the source tree
@@ -1859,6 +1995,7 @@
     iterm2: direct mode handler confirmed in the source tree
     xterm: direct mode handler confirmed in the source tree
     alacritty: direct mode handler confirmed in the source tree
+    rio: "ansi/mode.rs:63 maps 1003 to NamedPrivateMode::ReportAllMouseMotion; crosswords/mod.rs:1990-1995/2070-2074 set/unset Mode::MOUSE_MOTION"
   notes: Motion reported unconditionally. kitty calls it MOUSE_MOVE_TRACKING.
 - id: mouse_sgr_pixel
   name: SGR-pixel coordinates (mode 1016)
@@ -1878,6 +2015,7 @@
     iterm2: 'yes'
     xterm: 'yes'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:1323; InputGenerator.cpp:1329 MouseTransport::SGRPixels
@@ -1893,6 +2031,7 @@
       dispatch and from vte.cc's coordinate encoder, so setting it has no effect
     windows-terminal: no 1016 entry
     alacritty: not in NamedPrivateMode
+    rio: "mode 1016 absent from PrivateMode::new/NamedPrivateMode in rio-backend/src/ansi/mode.rs; only SgrMouse=1006 is present, with no 1016 pixel variant"
   notes: Reports pixel rather than cell coordinates.
 - id: mouse_passive_tracking
   name: Passive mouse tracking (mode 2029)
@@ -1912,6 +2051,7 @@
     iterm2: 'no'
     xterm: 'no'
     alacritty: 'no'
+    rio: 'no'
     apple-terminal: unknown
   evidence:
     contour: src/vtbackend/primitives.h:1325; Terminal.cpp:3172-3176; covered by Terminal_test.cpp:4269
@@ -1929,6 +2069,7 @@
     iterm2: no 2029 in the tree
     xterm: no 2029 in the tree
     alacritty: no 2029 in the tree
+    rio: "mode 2029 absent from PrivateMode::new/NamedPrivateMode in rio-backend/src/ansi/mode.rs; no 2029 anywhere in rio-backend/src"
   notes: 'Contour''s own extension: lets an application read mouse position without taking the mouse away
     from the user''s selection. VTE has catalogued Contour''s whole extension range -- 2026 batched rendering,
     2027 unicode core, 2028 text reflow, 2029 passive tracking, 2030 grid cell selection, 2031 colour
