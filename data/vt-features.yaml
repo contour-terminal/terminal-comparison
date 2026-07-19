@@ -1545,3 +1545,110 @@
       -> swap_alt()
   notes: The one universally-supported row in this whole batch — every terminal surveyed implements at
     least mode 1049.
+- id: dec_page_memory
+  name: DEC page memory (more than one page)
+  category: window
+  sequence: CSI Ps U (NP) / CSI Ps V (PP) / CSI Ps SP P (PPA)
+  spec: https://vt100.net/docs/vt510-rm/chapter4.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'no'
+    iterm2: unknown
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'measured by harness/vt_probe.py on this machine: 8 pages reachable, NP/PP confirmed by DECXCPR'
+    kitty: measured by harness/vt_probe.py on this machine
+    ghostty: measured by harness/vt_probe.py on this machine
+    foot: measured by harness/vt_probe.py on this machine
+    wezterm: measured by harness/vt_probe.py on this machine
+    gnome-terminal: 'measured by harness/vt_probe.py on this machine: reports a page number, but only
+      one page is reachable'
+    konsole: measured by harness/vt_probe.py on this machine
+    alacritty: measured by harness/vt_probe.py on this machine
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1669 AdaptDispatch::PagePositionAbsolute
+      -> _pages.MoveTo(); PPR/PPB declared alongside it in adaptDispatch.hpp:88-90
+    mintty: src/termout.c has DECXCPR but no PPA/PPR/PPB handler
+    xterm: VTPrsTbl.c:1877-1879 maps PPA/PPR/PPB to CASE_GROUND_STATE -- the sequences are parsed and
+      discarded; the probe confirms one page
+  notes: Contour and Windows Terminal are the only two here with a real page model. xterm recognises the
+    page sequences and ignores them, which is why it reports a page number while having a single page.
+- id: decxcpr
+  name: DECXCPR (extended cursor position report)
+  category: window
+  sequence: CSI ? 6 n  ->  CSI ? Pr ; Pc ; Pp R
+  spec: https://vt100.net/docs/vt510-rm/DECXCPR.html
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: unknown
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'measured by harness/vt_probe.py on this machine: replies with the page parameter'
+    kitty: 'measured by harness/vt_probe.py on this machine: replies, but without the third (page) parameter'
+    ghostty: measured by harness/vt_probe.py on this machine
+    foot: measured by harness/vt_probe.py on this machine
+    wezterm: measured by harness/vt_probe.py on this machine
+    konsole: measured by harness/vt_probe.py on this machine
+    alacritty: measured by harness/vt_probe.py on this machine
+    gnome-terminal: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
+    xterm: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
+    windows-terminal: src/terminal/adapter/DispatchTypes.hpp:503 ExtendedCursorPositionReport = DECPrivateStatus(6);
+      adaptDispatch.cpp _CursorPositionReport(extendedReport)
+    mintty: 'src/termout.c:3667 `when 6:  // DECXCPR`'
+  notes: 'A terminal can answer DECXCPR without the page parameter, which is recorded here as partial:
+    it implements the report but has no page memory to describe.'
+- id: dec_locator
+  name: DEC locator (DECELR / DECSLE / DECRQLP)
+  category: input
+  sequence: CSI Ps ; Ps ' z (DECELR) / CSI Ps ' { (DECSLE) / CSI Ps ' | (DECRQLP)
+  spec: https://vt100.net/docs/vt510-rm/DECELR.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: unknown
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'measured by harness/vt_probe.py on this machine: DECRQLP answered with a DECLRP position
+      report'
+    kitty: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
+    ghostty: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
+    foot: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
+    wezterm: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
+    konsole: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
+    alacritty: measured by harness/vt_probe.py on this machine
+    gnome-terminal: measured by harness/vt_probe.py on this machine
+    windows-terminal: DECELR/DECSLE/DECRQLP appear only in doc/reference/master-sequence-list.csv, which
+      is a catalogue of sequences; no handler exists under src/
+    mintty: src/termout.c:3682/3705/3715 CPAIR handlers for DECELR, DECSLE and DECRQLP; src/termmouse.c:344
+      handles the locator events
+    xterm: charproc.c CASE_DECELR / CASE_DECRQLP with real handling (56 references across the tree)
+  notes: xterm and mintty both implement the locator in source, but xterm did not answer the probe at
+    its default conformance level, so its measured row reads no. Windows Terminal lists the sequences
+    in its documentation catalogue without implementing them.
