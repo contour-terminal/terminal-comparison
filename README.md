@@ -55,6 +55,16 @@ rather than fixed for the table. The correction was
 Contour pull request; Contour itself narrowed on VS15 until that review, so this is a
 correction the project applied to its own terminal as well as to the tool.
 
+The same change is on a branch against upstream, ready to be proposed:
+[`christianparpart/ucs-detect@fix/vs15-does-not-narrow`](https://github.com/christianparpart/ucs-detect/tree/fix/vs15-does-not-narrow).
+This repository keeps the patch form regardless, so a run is reproducible from the pinned
+upstream commit whether or not the change is ever merged.
+
+With the corrected oracle, three of the nine terminals measured here narrow on VS15
+(foot, Ghostty and kitty), and two combine grapheme clustering with the specified
+behaviour (Contour and WezTerm). Under the old oracle those verdicts were exactly
+reversed, which is the point.
+
 ## Reproducing a run
 
 Requirements: Python 3.11+, and on Linux `Xvfb`, `weston`, `dbus-run-session`,
