@@ -20,7 +20,7 @@
     "decrqlp": true,
     "locator_available": true,
     "raw": {
-      "decrqlp": "'\\x1b[1;0;9;66;1&w'"
+      "decrqlp": "'\\x1b[1;0;1;1;1&w'"
     }
   },
   "rtl": {
@@ -30,6 +30,15 @@
     "rtl_honoured": false,
     "raw": {
       "note": "one Hebrew letter from column 40: 1 column(s) with DECRLM reset, 1 with it set"
+    }
+  },
+  "glyph_protocol": {
+    "supported": false,
+    "formats": [],
+    "registers": false,
+    "glossary_confirms": false,
+    "raw": {
+      "support": "''"
     }
   }
 }

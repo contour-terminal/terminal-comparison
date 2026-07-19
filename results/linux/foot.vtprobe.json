@@ -29,5 +29,14 @@
     "raw": {
       "note": "one Hebrew letter from column 40: 1 column(s) with DECRLM reset, 1 with it set"
     }
+  },
+  "glyph_protocol": {
+    "supported": false,
+    "formats": [],
+    "registers": false,
+    "glossary_confirms": false,
+    "raw": {
+      "support": "''"
+    }
   }
 }

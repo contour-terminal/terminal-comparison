@@ -1,12 +1,14 @@
 ambiguous_width: 1
-datetime: 2026-07-19 09:58:48 UTC
+datetime: 2026-07-19 19:09:28 UTC
 environment:
   COLORTERM: truecolor
   TERM: alacritty
+  TERM_PROGRAM: contour
+  TERM_PROGRAM_VERSION: 0.7.0-lead-out-aef659b5
 height: 27
 preferred_encoding: UTF-8
 python_version: 3.14.6
-seconds_elapsed: 1.1371268829971086
+seconds_elapsed: 0.8777821409998978
 session_arguments:
   all: false
   limit_category_time: 240.0
@@ -1332,6 +1334,7 @@ terminal_results:
   screen_ratio: '4:3'
   screen_ratio_name: VGA
   sixel: false
+  software_method: TERM_PROGRAM
   software_name: Alacritty
   software_version: 0.17.0
   styled_underlines: false
