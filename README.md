@@ -103,7 +103,36 @@ produces **no** capability or DEC-mode data, only Unicode scores.
 | DECRQM (`--all-dec-modes`) | ~158 DEC private modes, including every mouse-reporting protocol from X10 (9) through SGR-pixel (1016), and Contour's passive mouse tracking (2029) |
 | `harness/vt_probe.py` | DEC page memory and the DEC locator |
 
-The last row exists because page memory and the locator are **not** DEC private modes, so
+### Where a terminal is not measured at its defaults
+
+One terminal is deliberately not launched with stock settings, because doing so produced a
+table that was simply wrong about it.
+
+**xterm** is started with `decGraphicsID: vt340` and `allowWindowOps: true`. Its defaults
+understate it in two independent ways, and neither is a conformance level:
+
+- **Sixel** is gated on the *graphics* ID, which is separate from the terminal ID. Raising
+  `decGraphicsID` to vt340 enables Sixel without dropping the terminal below VT420 and
+  losing the rectangular operations — the two are not in conflict, which is easy to
+  assume.
+- **DECRQCRA** is gated on two things at once (`charproc.c:5612`): a VT420 terminal level,
+  which is already xterm's default, *and* `AllowWindowOps(ewGetChecksum)`, which is not.
+
+With stock settings xterm reports neither, and anyone who knows xterm would rightly
+discard the whole table on sight. With these two resources it reports both.
+
+There is a third case the harness cannot fix from the command line: xterm's **DEC locator**
+sits behind `#if OPT_DEC_LOCATOR`, which `xtermcfg.h` ships as `#undef` and which needs
+`--enable-dec-locator` at *configure* time. A stock xterm binary has no locator compiled
+in, so its measured "no" is correct for the binary tested, while the documented matrix
+records that the implementation exists in the source.
+
+The general rule: where a terminal ships a capability disabled, the measured table says
+what it does and the documented table says what it can do, and the caveats name which.
+
+### Page memory and the locator
+
+These exist because page memory and the locator are **not** DEC private modes, so
 DECRQM cannot answer for them. The probe uses the sequences instead: it asks DECXCPR
 (`CSI ? 6 n`) whether the reply carries a page number, moves with PPA and NP/PP and
 re-asks to confirm the cursor actually changed page, and enables the locator with DECELR

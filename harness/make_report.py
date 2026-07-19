@@ -33,6 +33,8 @@ SUPPORT_MARK = {
     "partial": ("~", "partial", "partial"),
     "no": ("&#8212;", "no", "no"),
     "unknown": ("?", "unknown", "?"),
+    # Asked, and the terminal answered nothing -- distinct from "we did not ask".
+    "no-decrqm": ("n/a", "unknown", "n/a"),
 }
 
 
@@ -99,8 +101,17 @@ def probe_value(doc: dict, probe: dict) -> str:
 
 
 def mode_value(doc: dict, number: int) -> str:
-    """Resolve one DEC private mode to yes/no/unknown."""
-    modes = (doc.get("terminal_results") or {}).get("modes") or {}
+    """Resolve one DEC private mode to yes/no/no-decrqm/unknown.
+
+    An empty `modes` map means the probe asked and the terminal answered nothing at
+    all, which is a fact about the terminal rather than a gap in the measurement --
+    Konsole, for instance, has no DECRQM handler. Reporting that as "unknown" would
+    read as "nobody checked", so it gets its own verdict.
+    """
+    results = doc.get("terminal_results") or {}
+    modes = results.get("modes")
+    if not modes:
+        return "no-decrqm" if modes is not None else "unknown"
     entry = modes.get(str(number), modes.get(number))
     if entry is None:
         return "unknown"
@@ -147,6 +158,19 @@ def cross_check(platforms, caps, vt_features, keys) -> list[dict]:
                     and measured != doc_verdict:
                 out.append({"feature": row["name"], "terminal": key,
                             "measured": measured, "documented": doc_verdict})
+    return out
+
+
+def terminals_without_decrqm(platforms, keys) -> list[str]:
+    """Terminals that answered no DECRQM at all, so every mode row reads n/a."""
+    out = []
+    for key in keys:
+        doc = next((run.yamls[key] for run in platforms if key in run.yamls), None)
+        if doc is None:
+            continue
+        modes = (doc.get("terminal_results") or {}).get("modes")
+        if modes is not None and not modes:
+            out.append(key)
     return out
 
 
@@ -307,6 +331,14 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
 
     add("### DEC private modes (DECRQM)")
     add("")
+    silent = terminals_without_decrqm(platforms, keys)
+    if silent:
+        names = ", ".join(BY_KEY[k].name for k in silent)
+        add(f"`n/a` marks a terminal that answers no DECRQM at all, which is a fact about "
+            f"it rather than a gap in the measurement: {names} can set and reset modes but "
+            f"never report one, so no mode row can be filled in for it by query. The "
+            f"documented matrix below covers those features instead.")
+        add("")
     rows = []
     for mode in caps["modes"]:
         row = [f"{mode['number']} — {mode['name']}"]
@@ -390,15 +422,18 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
             add("")
         else:
             add(f"{len(disagreements)} of the features covered by both a runtime probe "
-                "and the documented matrix disagree. Every case so far runs the same way "
-                "— the source says yes, the running terminal says no — and has one of two "
-                "causes. Either the feature ships **disabled** (xterm answers the Sixel "
-                "probe only at an emulation level that enables it; xterm and Alacritty "
-                "gate OSC 52), or it is implemented but **not advertised**: the underline "
-                "probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled "
-                "underlines without answering the capability query. In both cases the "
-                "documented column is the better guide to what the terminal can do, and "
-                "the measured column to what it will admit to.")
+                "and the documented matrix disagree. Every case runs the same way — the "
+                "source says yes, the running terminal says no — and each has a reason "
+                "worth knowing. Some are **shipped disabled**: xterm and Alacritty gate "
+                "OSC 52 behind a setting. The rest are **implemented but not "
+                "advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole and "
+                "Alacritty draw styled underlines perfectly well without answering the "
+                "capability query. Two former entries are gone because the harness now "
+                "launches xterm correctly — Sixel is gated on its graphics ID and "
+                "DECRQCRA on a window-op permission, neither of which is a conformance "
+                "level. Where they still differ, the documented column is the better "
+                "guide to what the terminal can do, and the measured column to what it "
+                "will admit to.")
             add("")
             add(md_table(
                 ["Feature", "Terminal", "Measured", "Documented"],
@@ -649,6 +684,14 @@ from 0/158 to 158/158.</p></div>""")
         add("<h3>Caveats</h3><ul>" + "".join(notes) + "</ul>")
 
     add("<h3>DEC private modes (DECRQM)</h3>")
+    silent = terminals_without_decrqm(platforms, keys)
+    if silent:
+        names = ", ".join(html.escape(BY_KEY[k].name) for k in silent)
+        add(f'<p class="note"><code>n/a</code> marks a terminal that answers no DECRQM at '
+            f"all, which is a fact about it rather than a gap in the measurement: {names} "
+            "can set and reset modes but never report one, so no mode row can be filled in "
+            "for it by query. The documented matrix below covers those features "
+            "instead.</p>")
     rows = []
     for mode in caps["modes"]:
         row = [f"<code>{mode['number']}</code> {html.escape(mode['name'])}"]
@@ -723,16 +766,18 @@ from 0/158 to 158/158.</p></div>""")
                 "and the documented matrix agrees.</p>")
         else:
             add(f'<p class="note">{len(disagreements)} of the features covered by both a '
-                "runtime probe and the documented matrix disagree. Every case so far runs "
-                "the same way &mdash; the source says yes, the running terminal says no "
-                "&mdash; and has one of two causes. Either the feature ships "
-                "<strong>disabled</strong> (xterm answers the Sixel probe only at an "
-                "emulation level that enables it; xterm and Alacritty gate OSC 52), or it "
-                "is implemented but <strong>not advertised</strong>: the underline probes "
-                "ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled underlines "
-                "without answering the capability query. In both cases the documented "
-                "column is the better guide to what the terminal can do, and the measured "
-                "column to what it will admit to.</p>")
+                "runtime probe and the documented matrix disagree. Every case runs the "
+                "same way &mdash; the source says yes, the running terminal says no "
+                "&mdash; and each has a reason worth knowing. Some are <strong>shipped "
+                "disabled</strong>: xterm and Alacritty gate OSC 52 behind a setting. The "
+                "rest are <strong>implemented but not advertised</strong>: the underline "
+                "probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled "
+                "underlines perfectly well without answering the capability query. Two "
+                "former entries are gone because the harness now launches xterm correctly "
+                "&mdash; Sixel is gated on its graphics ID and DECRQCRA on a window-op "
+                "permission, neither of which is a conformance level. Where they still "
+                "differ, the documented column is the better guide to what the terminal "
+                "can do, and the measured column to what it will admit to.</p>")
             add(html_table(
                 ["Feature", "Terminal", "Measured", "Documented"],
                 [[html.escape(d["feature"]), html.escape(BY_KEY[d["terminal"]].name),

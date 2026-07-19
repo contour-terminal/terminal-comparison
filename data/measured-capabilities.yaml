@@ -13,10 +13,11 @@ probes:
     name: Sixel graphics
     category: graphics
     caveat: >-
-      xterm implements Sixel but answers this probe only when started with an
-      emulation level that enables it (for example `-ti vt340`); the harness starts
-      it with defaults, so its "no" reflects the default configuration, not a
-      missing implementation.
+      xterm gates Sixel on its *graphics* ID rather than its terminal ID, and ships with
+      it off. The harness now starts xterm with `decGraphicsID: vt340`, which enables
+      Sixel without dropping the terminal below VT420 and losing the rectangular
+      operations, so xterm's row reflects what it can do rather than what it does out of
+      the box.
 
   - id: kitty_graphics
     field: kitty_graphics
@@ -85,9 +86,11 @@ probes:
     name: DECRQCRA (checksum of rectangular area)
     category: query
     caveat: >-
-      The reply's final byte is contested: xterm answers `* y`, and a probe expecting
-      `$ y` records a false negative. Treat a "no" here as unconfirmed rather than
-      absent.
+      xterm gates this on two things at once (charproc.c:5612): a VT420 terminal level,
+      which is already its default, and `AllowWindowOps(ewGetChecksum)`, which is not.
+      The harness now starts xterm with `allowWindowOps: true` and xterm answers. Note
+      also that the reply's final byte is contested -- xterm answers `* y`, not `$ y` --
+      so a probe written against the other reading can still record a false negative.
 
 # --- extra VT probes, read from <terminal>.vtprobe.json ----------------------------
 # These are features DECRQM cannot answer, because they are not modes.  The probe uses
@@ -112,14 +115,19 @@ vt_probes:
     category: pages
     caveat: >-
       Confirmed by moving with PPA and asking DECXCPR which page the cursor is on, so a
-      terminal that accepts PPA and ignores it is not counted. The probe stops looking
-      after page 8, so "pages reached" is a floor, not a maximum.
+      terminal that accepts PPA and ignores it is not counted.
 
   - id: pages_reachable
     path: pages.pages_reachable
-    name: Pages reached (probe stops at 8)
+    name: Pages reached
     category: pages
     numeric: true
+    caveat: >-
+      The walk stops at 32, well above any implementation found, and the probe records
+      whether it hit that ceiling. Contour reaches 15, which matches its source exactly:
+      MaxPageCount is 16 and the last index is reserved for the alternate screen, leaving
+      15 DEC-addressable pages. An earlier ceiling of 8 understated it, and the number
+      here was the probe's limit rather than the terminal's.
 
   - id: np_pp
     path: page_sequences.np_pp
@@ -131,9 +139,11 @@ vt_probes:
     name: DEC locator (DECELR / DECRQLP)
     category: locator
     caveat: >-
-      A terminal with no locator answers nothing at all. xterm implements the locator but
-      did not answer under the harness's default settings, which start it at its default
-      conformance level; treat its "no" as unconfirmed rather than absent.
+      A terminal with no locator answers nothing at all. xterm's case is a build option,
+      not a runtime one: OPT_DEC_LOCATOR is `#undef` by default in xtermcfg.h and needs
+      `--enable-dec-locator` at configure time, so a stock xterm has no locator code
+      compiled in and its "no" is correct for the binary measured here, while the
+      documented row records that the implementation exists in the source.
 
   - id: locator_available
     path: locator.locator_available
@@ -145,6 +155,10 @@ vt_probes:
       this row separates "implements the locator" from "a device was there".
 
 # --- DEC private modes, read from terminal_results.modes ---------------------------
+# A terminal that answers no DECRQM at all is rendered "n/a" rather than "?": the probe
+# asked and got silence, which is a fact about the terminal. Konsole is the case here --
+# its CSI_PR dispatch (Vt102Emulation.cpp token_csi_pr) handles the h/l/s/r finals and
+# has no `$ p` at all, so it can set and reset modes but never report one.
 # `supported` is what DECRQM reported; a mode the terminal does not recognise answers
 # "not recognised" and is rendered as "no".
 modes:

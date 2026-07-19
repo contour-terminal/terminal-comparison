@@ -208,7 +208,18 @@ TERMINALS: tuple[Terminal, ...] = (
         homepage="https://invisible-island.net/xterm/",
         notes="The reference implementation; useful as a control.",
         launches={
-            LINUX: Launch(binary="xterm", exec_args=("-geometry", "200x50", "-e"),
+            # xterm's defaults understate it, and a table that says so would be wrong.
+            # decTerminalID already defaults to 420, so the VT420 level is not the
+            # problem: DECRQCRA is additionally gated on AllowWindowOps(ewGetChecksum)
+            # (charproc.c:5612), which is off by default. Sixel is gated on the
+            # *graphics* ID, which is separate from the terminal ID -- so raising
+            # decGraphicsID to vt340 enables Sixel without dropping below VT420 and
+            # losing the rectangular operations.
+            LINUX: Launch(binary="xterm",
+                          exec_args=("-geometry", "200x50",
+                                     "-xrm", "XTerm*decGraphicsID: vt340",
+                                     "-xrm", "XTerm*allowWindowOps: true",
+                                     "-e"),
                           version_args=("-version",), version_re=r"\((\d+)\)",
                           verified=True),
         },

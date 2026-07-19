@@ -28,6 +28,12 @@ import tty
 
 TIMEOUT = 0.6
 
+#: How far to walk when counting pages.  Has to exceed any real implementation or the
+#: number reported is the probe's ceiling rather than the terminal's: Contour allows 16
+#: (MaxPageCount, one of which is the alternate screen) and Windows Terminal 6, so a
+#: ceiling of 8 silently understated Contour.
+MAX_PROBE_PAGES = 32
+
 
 class Tty:
     """The terminal's tty in raw mode, with bounded request/response."""
@@ -92,8 +98,9 @@ def probe_pages(term: Tty) -> dict:
     one page, so the second half moves to page 2 with PPA and asks again.
     """
     result: dict = {
-        "decxcpr": False, "reports_page": False,
-        "multiple_pages": False, "pages_reachable": 1, "raw": {},
+        "decxcpr": False, "reports_page": False, "multiple_pages": False,
+        "pages_reachable": 1, "probe_ceiling": MAX_PROBE_PAGES,
+        "hit_probe_ceiling": False, "raw": {},
     }
 
     reply = term.ask("\x1b[?6n", "R")
@@ -110,7 +117,7 @@ def probe_pages(term: Tty) -> dict:
 
     # Walk forward with PPA (`CSI Pn SP P`) and believe only what DECXCPR confirms.
     reachable = 1
-    for page in range(2, 9):
+    for page in range(2, MAX_PROBE_PAGES + 1):
         term.write(f"\x1b[{page} P")
         confirm = term.ask("\x1b[?6n", "R")
         seen = re.match(r"\x1b\[\??(\d+);(\d+)(?:;(\d+))?R", confirm)
@@ -119,6 +126,8 @@ def probe_pages(term: Tty) -> dict:
         reachable = page
     result["pages_reachable"] = reachable
     result["multiple_pages"] = reachable >= 2
+    # If the walk never failed, the terminal may go further than we looked.
+    result["hit_probe_ceiling"] = reachable >= MAX_PROBE_PAGES
 
     term.write(f"\x1b[{home_page} P")   # restore
     return result

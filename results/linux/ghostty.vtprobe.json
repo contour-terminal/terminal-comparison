@@ -4,6 +4,8 @@
     "reports_page": false,
     "multiple_pages": false,
     "pages_reachable": 1,
+    "probe_ceiling": 32,
+    "hit_probe_ceiling": false,
     "raw": {
       "decxcpr": "''"
     }

@@ -1565,24 +1565,27 @@
     alacritty: 'no'
     apple-terminal: unknown
   evidence:
-    contour: 'measured by harness/vt_probe.py on this machine: 8 pages reachable, NP/PP confirmed by DECXCPR'
+    contour: src/vtbackend/primitives.h:454 MaxPageCount = 16 with the last index reserved for the alternate
+      screen (AlternateScreenPageIndex); measured, 15 DEC-addressable pages reachable and confirmed by
+      DECXCPR
     kitty: no page model in kitty/vt-parser.c; worse than unsupported -- dispatch_csi() checks only for
       a '#' intermediate on 'P', so `CSI Ps SP P` (PPA) falls through to the plain DCH branch and deletes
       characters (vt-parser.c:1231-1236)
     ghostty: measured by harness/vt_probe.py on this machine
     foot: measured by harness/vt_probe.py on this machine
     wezterm: measured by harness/vt_probe.py on this machine
-    gnome-terminal: 'measured by harness/vt_probe.py on this machine: reports a page number, but only
-      one page is reachable'
+    gnome-terminal: vteseq.cc defines Terminal::NP/PP/PPA/PPB/PPR as empty bodies, commented "Since VTE
+      only has one page, this is ignored" -- recognised, deliberately no-op
     konsole: measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
     windows-terminal: src/terminal/adapter/PageManager.hpp:66 MAX_PAGES = 6 with an array of six independent
       TextBuffers; PageManager.cpp:152-225 MoveTo swaps row content and carries cursor position and attributes
       across; paging is disabled on the alt buffer (PageManager.cpp:122-125), so this is not scrollback
       relabelled as pages
-    mintty: src/termout.c has DECXCPR but no PPA/PPR/PPB handler
-    xterm: VTPrsTbl.c:1877-1879 maps PPA/PPR/PPB to CASE_GROUND_STATE -- the sequences are parsed and
-      discarded; the probe confirms one page
+    mintty: termout.c's space-intermediate cases cover only q,k,S,A,@,t,u,Z -- no P/Q/R -- and its DECCRA
+      handler explicitly skips the source and destination page arguments
+    xterm: ctlseqs.txt:804-808 states outright that xterm supports a single page and ignores DECPCCM/DECVCCM;
+      VTPrsTbl.c:1877-1879 maps PPA/PPR/PPB to CASE_GROUND_STATE, so the sequences are parsed and discarded
   notes: 'Contour and Windows Terminal are the only two here with a real page model. Windows Terminal''s
     is capped at six pages and resizes background pages without reflowing them, but they are genuinely
     distinct addressable buffers, and paging is bypassed on the alt buffer, which rules out scrollback
@@ -1620,11 +1623,15 @@
     konsole: measured by harness/vt_probe.py on this machine
     alacritty: vte src/ansi.rs has only ('n', []) among the 'n' arms -- no ('n', [b'?']) -- so `CSI ?
       6 n` reaches the unhandled arm and is dropped without a reply
-    gnome-terminal: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
-    xterm: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
+    gnome-terminal: vteseq.cc:6552-6596 replies with the page hardcoded to 1, commented "Always report
+      page 1 here (per XTERM source code)"
+    xterm: charproc.c:4589-4633 answers with a page field, but the value is the literal 1 and the field
+      is gated on vtXX_level >= 4; ctlseqs.txt:1425-1428 confirms it "assumes the default page". Correct
+      for a terminal with one page
     windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1574-1575 reports the live _pages.ActivePage().Number()
       as the third parameter, not a constant
-    mintty: 'src/termout.c:3667 `when 6:  // DECXCPR`'
+    mintty: termout.c:3665-3670 distinguishes the '?' form but replies with two parameters only; an inline
+      comment about the VT420 third parameter trails off unfinished
   notes: Three distinct behaviours hide behind one row. Contour, GNOME Terminal, xterm and Windows Terminal
     answer with a page parameter. kitty answers the private form but without one, recorded as partial.
     Ghostty, foot and Alacritty do not implement the private form at all and answer nothing -- a rejection
@@ -1645,7 +1652,7 @@
     konsole: 'no'
     windows-terminal: 'no'
     mintty: 'yes'
-    iterm2: unknown
+    iterm2: 'no'
     xterm: partial
     alacritty: 'no'
     apple-terminal: unknown
@@ -1658,15 +1665,264 @@
     wezterm: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
     konsole: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
-    gnome-terminal: measured by harness/vt_probe.py on this machine
+    gnome-terminal: 'vteseq.cc recognises DECELR/DECRQLP/DECSLE with empty bodies marked ''TODO: implement'',
+      and answers DSR 53/55/56 with an explicit ''no locator'''
     windows-terminal: no VTID for 'z, '{ or '| among the 133 entries in parser/OutputStateMachineEngine.hpp
       -- no parser mapping, so no dispatch and no DECLRP reply; adaptDispatch.cpp:1407-1411 answers the
       DSR locator-status queries with a hardcoded "?53" (locator not connected)
-    mintty: src/termout.c:3682/3705/3715 CPAIR handlers for DECELR, DECSLE and DECRQLP; src/termmouse.c:344
-      handles the locator events
-    xterm: charproc.c CASE_DECELR / CASE_DECRQLP are real handlers, but the terminal did not answer DECRQLP
-      at its default conformance level under the harness, so the feature is present in source and not
-      reachable as shipped
-  notes: mintty implements the locator outright. xterm implements it in source but did not answer at its
-    default conformance level, so it is recorded as partial. Windows Terminal lists all three sequences
-    in its documentation catalogue while affirmatively reporting no locator device.
+    mintty: termout.c:3682/3705/3715 implement DECELR, DECSLE and DECRQLP, with DECRQLP calling win_get_locator_info()
+      for a real Win32 mouse position -- unconditional, no build flag
+    xterm: 'charproc.c CASE_DECELR / CASE_DECRQLP are real handlers, but they sit behind #if OPT_DEC_LOCATOR,
+      which xtermcfg.h leaves `#undef` -- the locator needs --enable-dec-locator at configure time, so
+      a stock build has no locator at all'
+    iterm2: VT100CSIParserTest.m:390-394 carries explicit comments that 'z (DECELR), '{ (DECSLE) and '|
+      (DECRQLP) are not supported
+  notes: mintty implements the locator unconditionally. xterm implements it in source but behind a configure
+    option that is off by default, so a stock xterm answers nothing; that is why its measured and documented
+    rows differ. Windows Terminal lists all three sequences in its documentation catalogue while affirmatively
+    reporting no locator device.
+- id: mouse_x10
+  name: X10 mouse reporting (mode 9)
+  category: input
+  sequence: CSI ? 9 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:1295 {DECMode::MouseProtocolX10, 9}; InputGenerator.cpp:1251
+    xterm: button.c:738 case X10_MOUSE (the originating implementation); ctlseqs.txt:928
+    ghostty: src/terminal/modes.zig:266 mouse_event_x10 = 9
+    mintty: 'src/termout.c:2541 when 9: term.mouse_mode = MM_X10'
+    gnome-terminal: src/modes.py:449 XTERM_MOUSE_X10 = 9, dispatched to eSEND_XY_ON_CLICK
+    foot: 'csi.c:357-360 logs ''unimplemented: X10 mouse tracking mode'''
+    kitty: no case 9 in modes.h/screen.c; falls through to 'Unsupported screen mode'
+    konsole: Vt102Emulation.cpp:2230 maps 9 to the VT100 interlace mode and ignores it
+    wezterm: no value=9 mouse variant in DecPrivateModeCode
+    windows-terminal: ModeParams jumps DECARM=8 to ATT610=12; no X10 entry
+    iterm2: VT100Terminal.m:796-798 case 9 carries an explicit TODO and does nothing
+    alacritty: no 9 in NamedPrivateMode; unknown modes are ignored
+  notes: The oldest protocol, and the least uniformly kept. Several terminals recognise the mode number
+    and deliberately do nothing with it.
+- id: mouse_vt200
+  name: VT200 mouse reporting (mode 1000)
+  category: input
+  sequence: CSI ? 1000 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:1310
+    xterm: button.c:762
+    kitty: modes.h:62 (named MOUSE_BUTTON_TRACKING internally)
+    gnome-terminal: src/modes.py:1247
+    alacritty: vte crate src/ansi.rs:956
+    ghostty: src/terminal/modes.zig
+    foot: csi.c mouse mode dispatch
+    wezterm: csi.rs DecPrivateModeCode
+    konsole: Vt102Emulation.cpp mouse modes
+    mintty: src/termout.c mouse mode dispatch
+    windows-terminal: DispatchTypes.hpp ModeParams
+    iterm2: VT100Terminal.m mouse mode dispatch
+  notes: Universally supported; the baseline every application can assume.
+- id: mouse_highlight
+  name: Highlight mouse tracking (mode 1001)
+  category: input
+  sequence: CSI ? 1001 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: partial
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: partial
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    xterm: button.c:748 VT200_HIGHLIGHT_MOUSE, with the full round-trip protocol -- the only complete
+      implementation found
+    contour: src/vtbackend/primitives.h:1311 declares {MouseProtocolHighlightTracking, 1001} so DECRQM
+      reports it supported, but InputGenerator.cpp:1298-1299 returns false with a TODO, so no report is
+      ever emitted
+    gnome-terminal: src/modes.py:1248 recognised and mapped to eHILITE_TRACKING, but vte.cc has no special
+      handling, so it behaves as plain click reporting
+    foot: 'csi.c:402-405 logs ''unimplemented: highlight mouse tracking'''
+    ghostty: not declared in modes.zig (jumps 1000 to 1002)
+    kitty: not declared (jumps MOUSE_BUTTON_TRACKING to MOUSE_MOTION_TRACKING)
+    konsole: 'Vt102Emulation.cpp:2277 ''TODO: Implementation of mouse mode 1001''; ignored'
+    wezterm: mod.rs:1770-1774 accepts HighlightMouseTracking with an empty handler
+    windows-terminal: no DECPrivateMode(1001) entry
+    mintty: no 1001 in termout.c
+    iterm2: VT100Terminal.m:842-843 explicit TODO, not implemented
+    alacritty: not in NamedPrivateMode
+  notes: The interesting row. xterm is the only full implementation. Contour and VTE both answer DECRQM
+    affirmatively while emitting nothing, so a mode query is not sufficient to detect it -- which is why
+    the measured table reports Contour as supporting a mode it does not honour.
+- id: mouse_button_event
+  name: Button-event tracking (mode 1002)
+  category: input
+  sequence: CSI ? 1002 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: direct mode handler confirmed in the source tree
+    kitty: direct mode handler confirmed in the source tree
+    ghostty: direct mode handler confirmed in the source tree
+    foot: direct mode handler confirmed in the source tree
+    wezterm: direct mode handler confirmed in the source tree
+    gnome-terminal: direct mode handler confirmed in the source tree
+    konsole: direct mode handler confirmed in the source tree
+    windows-terminal: direct mode handler confirmed in the source tree
+    mintty: direct mode handler confirmed in the source tree
+    iterm2: direct mode handler confirmed in the source tree
+    xterm: direct mode handler confirmed in the source tree
+    alacritty: direct mode handler confirmed in the source tree
+  notes: Motion reported while a button is held. kitty calls it MOUSE_MOTION_TRACKING.
+- id: mouse_any_event
+  name: Any-event tracking (mode 1003)
+  category: input
+  sequence: CSI ? 1003 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: direct mode handler confirmed in the source tree
+    kitty: direct mode handler confirmed in the source tree
+    ghostty: direct mode handler confirmed in the source tree
+    foot: direct mode handler confirmed in the source tree
+    wezterm: direct mode handler confirmed in the source tree
+    gnome-terminal: direct mode handler confirmed in the source tree
+    konsole: direct mode handler confirmed in the source tree
+    windows-terminal: direct mode handler confirmed in the source tree
+    mintty: direct mode handler confirmed in the source tree
+    iterm2: direct mode handler confirmed in the source tree
+    xterm: direct mode handler confirmed in the source tree
+    alacritty: direct mode handler confirmed in the source tree
+  notes: Motion reported unconditionally. kitty calls it MOUSE_MOVE_TRACKING.
+- id: mouse_sgr_pixel
+  name: SGR-pixel coordinates (mode 1016)
+  category: input
+  sequence: CSI ? 1016 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'yes'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:1323; InputGenerator.cpp:1329 MouseTransport::SGRPixels
+    xterm: 'button.c SET_PIXEL_POSITION_MOUSE (originated in patch #359, 2020)'
+    foot: csi.c:456-460
+    ghostty: src/terminal/modes.zig:287
+    kitty: modes.h:69; mouse.c:99 case SGR_PIXEL_PROTOCOL with real coordinate encoding
+    konsole: Vt102Emulation.cpp:2323-2326
+    mintty: src/termout.c:2615
+    wezterm: csi.rs:935 SGRPixelsMouse = 1016
+    iterm2: VT100Terminal.m:888-894
+    gnome-terminal: src/modes.py:1259 declares XTERM_MOUSE_EXT_SGR_PIXEL but it is absent from vteseq.cc's
+      dispatch and from vte.cc's coordinate encoder, so setting it has no effect
+    windows-terminal: no 1016 entry
+    alacritty: not in NamedPrivateMode
+  notes: Reports pixel rather than cell coordinates.
+- id: mouse_passive_tracking
+  name: Passive mouse tracking (mode 2029)
+  category: input
+  sequence: CSI ? 2029 h / l
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: partial
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:1325; Terminal.cpp:3172-3176; covered by Terminal_test.cpp:4269
+      -- Contour originated this mode
+    gnome-terminal: src/modes.py:1057 mode_WHAT('CONTOUR_MOUSE_PASSIVE_TRACKING', 2029) under an explicit
+      '# Contour:' section; present in the codegen table only, with no dispatch in vteseq.cc, so it is
+      recognised but currently a no-op
+    kitty: no 2029 in the tree
+    ghostty: no 2029 in the tree
+    foot: no 2029 in the tree
+    konsole: no 2029 in the tree
+    wezterm: DecPrivateModeCode has entries through 2027 but no 2029
+    windows-terminal: no 2029 in the tree
+    mintty: no 2029 in the tree
+    iterm2: no 2029 in the tree
+    xterm: no 2029 in the tree
+    alacritty: no 2029 in the tree
+  notes: 'Contour''s own extension: lets an application read mouse position without taking the mouse away
+    from the user''s selection. VTE has catalogued Contour''s whole extension range -- 2026 batched rendering,
+    2027 unicode core, 2028 text reflow, 2029 passive tracking, 2030 grid cell selection, 2031 colour
+    palette reports -- naming them after Contour, though only some are wired up.'

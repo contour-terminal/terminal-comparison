@@ -1,11 +1,11 @@
 ambiguous_width: 1
-datetime: 2026-07-19 09:07:29 UTC
+datetime: 2026-07-19 09:32:58 UTC
 environment:
   TERM: xterm-256color
 height: 50
 preferred_encoding: UTF-8
 python_version: 3.14.6
-seconds_elapsed: 2.6306118030042853
+seconds_elapsed: 2.3023446130100638
 session_arguments:
   all: false
   limit_category_time: 240.0
@@ -28,7 +28,7 @@ terminal_results:
   cell_width: 6
   color_scheme: false
   colored_underlines: false
-  decrqcra: false
+  decrqcra: true
   decrqss: true
   decrqss_settings:
     decsace: '0'
@@ -46,6 +46,7 @@ terminal_results:
     extensions:
     - 1
     - 2
+    - 4
     - 6
     - 9
     - 15
@@ -1346,7 +1347,7 @@ terminal_results:
   pixels_width: 1200
   screen_ratio: '16:9'
   screen_ratio_name: HD
-  sixel: false
+  sixel: true
   software_method: XTVERSION
   software_name: xterm
   software_version: '406'

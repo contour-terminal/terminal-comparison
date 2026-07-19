@@ -3,7 +3,9 @@
     "decxcpr": true,
     "reports_page": true,
     "multiple_pages": true,
-    "pages_reachable": 8,
+    "pages_reachable": 15,
+    "probe_ceiling": 32,
+    "hit_probe_ceiling": false,
     "raw": {
       "decxcpr": "'\\x1b[?2;1;1R'"
     }
@@ -18,7 +20,7 @@
     "decrqlp": true,
     "locator_available": true,
     "raw": {
-      "decrqlp": "'\\x1b[1;0;8;42;1&w'"
+      "decrqlp": "'\\x1b[1;0;16;1;1&w'"
     }
   }
 }

@@ -5,7 +5,7 @@ Measurements are reproducible: see [README.md](README.md).
 
 ## How this was produced
 
-- **linux** — 2026-07-19 11:03:15 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
+- **linux** — 2026-07-19 11:28:53 +0200, `Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43`
   - ucs-detect pinned at `ea4510a4bc6e`, patches: `0001-vs15-must-not-narrow.patch` (076283770c66aa4f)
   - arguments: `--probe-silently --no-final-summary --limit-category-time 240 --detect-all-dec-modes`
 
@@ -13,14 +13,14 @@ Measurements are reproducible: see [README.md](README.md).
 
 | Terminal | Version | Platform | Display | Status | Run time |
 |---|---|---|---|---|---|
-| Contour | `0.7.0-lead-out-1269f24a` | linux | x11 | ok | 30.5s |
-| kitty | `0.47.1` | linux | x11 | ok | 96.6s |
+| Contour | `0.7.0-lead-out-1269f24a` | linux | x11 | ok | 31.0s |
+| kitty | `0.47.1` | linux | x11 | ok | 99.6s |
 | Ghostty | `1.3.1` | linux | x11 | ok | 7.0s |
 | WezTerm | `wezterm 20260716_195552_76b606ec` | linux | x11 | ok | 43.5s |
 | Konsole | `26.04.3` | linux | x11 | ok | 4.0s |
-| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 62.5s |
+| GNOME Terminal (VTE) | `3.60.0` | linux | x11 | ok | 50.0s |
 | Alacritty | `0.17.0` | linux | x11 | ok | 6.5s |
-| xterm | `406` | linux | x11 | ok | 5.0s |
+| xterm | `406` | linux | x11 | ok | 4.5s |
 | foot | `1.27.0` | linux | wayland | ok | 5.0s |
 
 ### Not measured here
@@ -65,7 +65,7 @@ Answered by the terminal during the run. A dash can mean *not supported*, *not e
 
 | Capability | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
 |---|---|---|---|---|---|---|---|---|---|
-| Sixel graphics | yes | no | no | yes | yes | yes | no | no | no |
+| Sixel graphics | yes | no | no | yes | yes | yes | no | no | yes |
 | Kitty graphics protocol | yes | yes | yes | no | yes | yes | no | no | no |
 | Kitty keyboard protocol | yes | yes | yes | yes | ? | ? | ? | yes | ? |
 | Kitty clipboard (OSC 5522) | yes | yes | no | no | no | no | no | no | no |
@@ -75,43 +75,45 @@ Answered by the terminal during the run. A dash can mean *not supported*, *not e
 | Styled underlines (CSI 4:x) | yes | yes | yes | yes | yes | no | no | no | no |
 | Underline colour (SGR 58) | yes | yes | yes | yes | yes | no | no | no | no |
 | DECRQSS (request selection or setting) | yes | yes | yes | yes | yes | no | yes | no | yes |
-| DECRQCRA (checksum of rectangular area) | yes | no | no | no | no | no | no | no | no |
+| DECRQCRA (checksum of rectangular area) | yes | no | no | no | no | no | no | no | yes |
 
 **Caveats**
 
-- **Sixel graphics** — xterm implements Sixel but answers this probe only when started with an emulation level that enables it (for example `-ti vt340`); the harness starts it with defaults, so its "no" reflects the default configuration, not a missing implementation.
+- **Sixel graphics** — xterm gates Sixel on its *graphics* ID rather than its terminal ID, and ships with it off. The harness now starts xterm with `decGraphicsID: vt340`, which enables Sixel without dropping the terminal below VT420 and losing the rectangular operations, so xterm's row reflects what it can do rather than what it does out of the box.
 - **OSC 52 clipboard** — Detected by what the terminal advertises -- DA1 extension 52 and the XTGETTCAP `Ms` capability -- not by writing to the clipboard, which would raise a permission prompt. A terminal that implements OSC 52 without advertising it, or that ships it disabled for security reasons, therefore reads as "no".
 - **Styled underlines (CSI 4:x)** — Asked through XTGETTCAP, so this measures whether the terminal *advertises* the capability, not whether it draws a curly underline. Several terminals that render them -- VTE, Konsole and Alacritty among the ones measured here -- do not answer the capability query, and the documented matrix records them as supporting the feature. Read a "no" as "not advertised".
 - **Underline colour (SGR 58)** — Asked through XTGETTCAP, with the same caveat as styled underlines: this is what the terminal advertises, not what it renders.
-- **DECRQCRA (checksum of rectangular area)** — The reply's final byte is contested: xterm answers `* y`, and a probe expecting `$ y` records a false negative. Treat a "no" here as unconfirmed rather than absent.
+- **DECRQCRA (checksum of rectangular area)** — xterm gates this on two things at once (charproc.c:5612): a VT420 terminal level, which is already its default, and `AllowWindowOps(ewGetChecksum)`, which is not. The harness now starts xterm with `allowWindowOps: true` and xterm answers. Note also that the reply's final byte is contested -- xterm answers `* y`, not `$ y` -- so a probe written against the other reading can still record a false negative.
 
 ### DEC private modes (DECRQM)
 
+`n/a` marks a terminal that answers no DECRQM at all, which is a fact about it rather than a gap in the measurement: Konsole can set and reset modes but never report one, so no mode row can be filled in for it by query. The documented matrix below covers those features instead.
+
 | Mode | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
 |---|---|---|---|---|---|---|---|---|---|
-| 2027 — Grapheme clustering | yes | no | yes | yes | yes | ? | no | no | no |
-| 2026 — Synchronized output | yes | yes | yes | yes | yes | ? | no | yes | no |
-| 2048 — In-band resize notification | yes | yes | yes | yes | no | ? | no | no | no |
-| 2004 — Bracketed paste | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| 1049 — Alternate screen buffer | yes | yes | yes | yes | no | ? | yes | yes | yes |
-| 7 — Auto-wrap (DECAWM) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
+| 2027 — Grapheme clustering | yes | no | yes | yes | yes | n/a | no | no | no |
+| 2026 — Synchronized output | yes | yes | yes | yes | yes | n/a | no | yes | no |
+| 2048 — In-band resize notification | yes | yes | yes | yes | no | n/a | no | no | no |
+| 2004 — Bracketed paste | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| 1049 — Alternate screen buffer | yes | yes | yes | yes | no | n/a | yes | yes | yes |
+| 7 — Auto-wrap (DECAWM) | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 ### Mouse reporting modes (DECRQM)
 
 | Mode | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
 |---|---|---|---|---|---|---|---|---|---|
-| `9` — X10 compatibility mouse reporting | yes | no | yes | no | no | ? | yes | no | yes |
-| `1000` — VT200 mouse — report button press and release | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1001` — Highlight mouse tracking | yes | no | no | no | no | ? | yes | no | yes |
-| `1002` — Button-event tracking (motion while pressed) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1003` — Any-event tracking (motion always) | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1004` — Focus in/out events | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1005` — UTF-8 extended coordinates | yes | yes | yes | no | yes | ? | no | yes | yes |
-| `1006` — SGR extended coordinates | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1007` — Alternate-scroll mode | yes | no | yes | yes | no | ? | yes | yes | yes |
-| `1015` — urxvt extended coordinates | yes | no | yes | yes | no | ? | no | no | yes |
-| `1016` — SGR-pixel coordinates | yes | yes | yes | yes | yes | ? | no | no | yes |
-| `2029` — Passive mouse tracking (Contour extension) | yes | no | no | no | no | ? | no | no | no |
+| `9` — X10 compatibility mouse reporting | yes | no | yes | no | no | n/a | yes | no | yes |
+| `1000` — VT200 mouse — report button press and release | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1001` — Highlight mouse tracking | yes | no | no | no | no | n/a | yes | no | yes |
+| `1002` — Button-event tracking (motion while pressed) | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1003` — Any-event tracking (motion always) | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1004` — Focus in/out events | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1005` — UTF-8 extended coordinates | yes | yes | yes | no | yes | n/a | no | yes | yes |
+| `1006` — SGR extended coordinates | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1007` — Alternate-scroll mode | yes | no | yes | yes | no | n/a | yes | yes | yes |
+| `1015` — urxvt extended coordinates | yes | no | yes | yes | no | n/a | no | no | yes |
+| `1016` — SGR-pixel coordinates | yes | yes | yes | yes | yes | n/a | no | no | yes |
+| `2029` — Passive mouse tracking (Contour extension) | yes | no | no | no | no | n/a | no | no | no |
 
 - **2029** — Lets an application receive mouse position without taking the mouse away from the user's selection. Contour's own extension; no other terminal implements it yet.
 
@@ -124,7 +126,7 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 | DECXCPR (extended cursor position report) | yes | yes | no | no | no | no | yes | no | yes |
 | Reports a page number | yes | no | no | no | no | no | yes | no | yes |
 | DEC page memory (more than one page) | yes | no | no | no | no | no | no | no | no |
-| Pages reached (probe stops at 8) | 8 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| Pages reached | 15 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
 | NP / PP (next and preceding page) | yes | no | no | no | no | no | no | no | no |
 | DEC locator (DECELR / DECRQLP) | yes | no | no | no | no | no | no | no | no |
 | Locator reports a position | yes | no | no | no | no | no | no | no | no |
@@ -132,8 +134,9 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 **Caveats**
 
 - **Reports a page number** — A terminal can answer DECXCPR without the third (page) parameter. That is recorded here as "no": it answers the report but has no page memory to describe.
-- **DEC page memory (more than one page)** — Confirmed by moving with PPA and asking DECXCPR which page the cursor is on, so a terminal that accepts PPA and ignores it is not counted. The probe stops looking after page 8, so "pages reached" is a floor, not a maximum.
-- **DEC locator (DECELR / DECRQLP)** — A terminal with no locator answers nothing at all. xterm implements the locator but did not answer under the harness's default settings, which start it at its default conformance level; treat its "no" as unconfirmed rather than absent.
+- **DEC page memory (more than one page)** — Confirmed by moving with PPA and asking DECXCPR which page the cursor is on, so a terminal that accepts PPA and ignores it is not counted.
+- **Pages reached** — The walk stops at 32, well above any implementation found, and the probe records whether it hit that ceiling. Contour reaches 15, which matches its source exactly: MaxPageCount is 16 and the last index is reserved for the alternate screen, leaving 15 DEC-addressable pages. An earlier ceiling of 8 understated it, and the number here was the probe's limit rather than the terminal's.
+- **DEC locator (DECELR / DECRQLP)** — A terminal with no locator answers nothing at all. xterm's case is a build option, not a runtime one: OPT_DEC_LOCATOR is `#undef` by default in xtermcfg.h and needs `--enable-dec-locator` at configure time, so a stock xterm has no locator code compiled in and its "no" is correct for the binary measured here, while the documented row records that the implementation exists in the source.
 - **Locator reports a position** — DECLRP with Pe=0 means "locator unavailable" -- the sequence is implemented but no pointing device answered. Under a headless display that is the expected reply, so this row separates "implements the locator" from "a device was there".
 
 ### Every DEC private mode any terminal supports
@@ -142,119 +145,118 @@ Neither is a DEC private mode, so DECRQM cannot answer for them. These rows come
 
 | Mode | Contour | kitty | Ghostty | foot | WezTerm | Konsole | GNOME Terminal (VTE) | Alacritty | xterm |
 |---|---|---|---|---|---|---|---|---|---|
-| `1` — Cursor Keys Mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `2` — ANSI/VT52 Mode | yes | no | no | no | yes | ? | yes | no | yes |
-| `3` — Column Mode | yes | yes | yes | no | yes | ? | yes | no | yes |
-| `4` — Scrolling Mode | yes | no | yes | no | no | ? | no | no | yes |
-| `5` — Screen Mode (light or dark screen) | yes | yes | yes | yes | no | ? | yes | no | yes |
-| `6` — Origin Mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `7` — Auto Wrap Mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `8` — Auto Repeat Mode | yes | yes | yes | no | no | ? | yes | no | no |
-| `9` — Interlace Mode / Mouse X10 tracking | yes | no | yes | no | no | ? | yes | no | yes |
-| `10` — Editing Mode / Show toolbar (rxvt) | yes | no | no | no | no | ? | no | no | no |
-| `12` — Katakana Shift Mode / Blinking cursor (xterm) | yes | no | yes | yes | yes | ? | no | yes | yes |
-| `13` — Space Compression/Field Delimiter Mode / Start blinking cursor (xterm) | no | no | no | no | no | ? | no | no | yes |
-| `14` — Transmit Execution Mode / Enable XOR of blinking cursor control (xterm) | no | no | no | no | no | ? | no | no | yes |
-| `18` — Print Form Feed | yes | no | no | no | no | ? | no | no | yes |
-| `19` — Printer Extent | yes | no | no | no | no | ? | no | no | yes |
-| `25` — Text Cursor Enable Mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `30` — Show scrollbar (rxvt) | yes | no | no | no | no | ? | no | no | yes |
-| `34` — Cursor Right to Left Mode | yes | no | no | no | no | ? | no | no | no |
-| `35` — Hebrew (Keyboard) Mode / Enable font-shifting functions (rxvt) | yes | no | no | no | no | ? | no | no | yes |
-| `36` — Hebrew Encoding Mode | yes | no | no | no | no | ? | no | no | no |
-| `38` — Tektronix 4010/4014 Mode | no | no | no | no | no | ? | no | no | yes |
-| `40` — Carriage Return/New Line Mode / Allow 80⇒132 mode (xterm) | yes | no | yes | no | no | ? | yes | no | yes |
-| `41` — Unidirectional Print Mode / more(1) fix (xterm) | yes | no | no | no | no | ? | no | no | yes |
-| `42` — National Replacement Character Set Mode | yes | no | no | no | no | ? | no | no | yes |
-| `44` — Graphics Print Color Mode / Turn on margin bell (xterm) | no | no | no | no | no | ? | no | no | yes |
-| `45` — Graphics Print Color Syntax / Reverse-wraparound mode (xterm) | yes | no | yes | yes | yes | ? | no | no | yes |
-| `46` — Graphics Print Background Mode / Start logging (xterm) | yes | no | no | no | no | ? | no | no | no |
-| `47` — Graphics Rotated Print Mode / Use Alternate Screen Buffer (xterm) | yes | no | yes | yes | no | ? | yes | no | yes |
-| `57` — Greek/N-A Keyboard Mapping Mode | yes | no | no | no | no | ? | no | no | no |
-| `59` — Kanji/Katakana Display Mode | no | no | no | no | no | ? | yes | no | no |
-| `61` — Vertical Cursor Coupling Mode | yes | no | no | no | no | ? | yes | no | no |
-| `64` — Page Cursor Coupling Mode | yes | no | no | no | no | ? | yes | no | no |
-| `66` — Numeric Keypad Mode | yes | no | yes | yes | no | ? | yes | no | yes |
-| `67` — Backarrow Key Mode | yes | no | no | no | no | ? | no | no | yes |
-| `68` — Keyboard Usage Mode | yes | no | no | no | no | ? | no | no | no |
-| `69` — Vertical Split Screen Mode / DECLRMM - Left Right Margin Mode | yes | no | yes | no | yes | ? | yes | no | yes |
-| `73` — Transmission Rate Limiting | yes | no | no | no | no | ? | no | no | no |
-| `80` — Sixel Display Mode | yes | no | no | yes | yes | ? | yes | no | yes |
-| `81` — Key Position Mode | yes | no | no | no | no | ? | no | no | no |
-| `95` — No Clearing Screen on Column Change Mode | yes | no | no | no | no | ? | no | no | no |
-| `96` — Right to Left Copy Mode | yes | no | no | no | no | ? | no | no | no |
-| `97` — CRT Save Mode | yes | no | no | no | no | ? | no | no | no |
-| `98` — Auto Resize Mode | yes | no | no | no | no | ? | no | no | no |
-| `99` — Modem Control Mode | yes | no | no | no | no | ? | no | no | no |
-| `100` — Auto Answerback Mode | yes | no | no | no | no | ? | no | no | no |
-| `101` — Conceal Answerback Message Mode | yes | no | no | no | no | ? | no | no | no |
-| `102` — Ignore Null Mode | yes | no | no | no | no | ? | no | no | no |
-| `103` — Half Duplex Mode | yes | no | no | no | no | ? | no | no | no |
-| `104` — Secondary Keyboard Language Mode | yes | no | no | no | no | ? | no | no | no |
-| `106` — Overscan Mode | yes | no | no | no | no | ? | no | no | no |
-| `112` — Review Previous Lines Mode | no | no | no | no | no | ? | yes | no | no |
-| `1000` — Send Mouse X & Y on button press | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1001` — Use Hilite Mouse Tracking | yes | no | no | no | no | ? | yes | no | yes |
-| `1002` — Use Cell Motion Mouse Tracking | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1003` — Use All Motion Mouse Tracking | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1004` — Send FocusIn/FocusOut events | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1005` — Enable UTF-8 Mouse Mode | yes | yes | yes | no | yes | ? | no | yes | yes |
-| `1006` — Enable SGR Mouse Mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `1007` — Enable Alternate Scroll Mode | yes | no | yes | yes | no | ? | yes | yes | yes |
-| `1010` — Scroll to bottom on tty output | no | no | no | no | no | ? | no | no | yes |
-| `1011` — Scroll to bottom on key press | no | no | no | no | no | ? | no | no | yes |
-| `1014` — Enable fastScroll resource | no | no | no | no | no | ? | no | no | yes |
-| `1015` — Enable urxvt Mouse Mode | yes | no | yes | yes | no | ? | no | no | yes |
-| `1016` — Enable SGR Mouse PixelMode | yes | yes | yes | yes | yes | ? | no | no | yes |
-| `1021` — Bold/italic implies high intensity | no | no | no | no | no | ? | yes | no | no |
-| `1034` — Interpret "meta" key | no | no | no | yes | no | ? | no | no | yes |
-| `1035` — Enable special modifiers for Alt and NumLock keys | no | no | yes | yes | no | ? | no | no | yes |
-| `1036` — Send ESC when Meta modifies a key | no | no | yes | yes | no | ? | yes | no | yes |
-| `1037` — Send DEL from the editing-keypad Delete key | no | no | no | no | no | ? | no | no | yes |
-| `1039` — Send ESC when Alt modifies a key | no | no | yes | no | no | ? | no | no | yes |
-| `1040` — Keep selection even if not highlighted | no | no | no | no | no | ? | no | no | yes |
-| `1041` — Use the CLIPBOARD selection | no | no | no | no | no | ? | no | no | yes |
-| `1042` — Enable Urgency window manager hint when Control-G is received | no | no | no | yes | no | ? | no | yes | yes |
-| `1043` — Enable raising of the window when Control-G is received | no | no | no | no | no | ? | no | no | yes |
-| `1044` — Reuse the most recent data copied to CLIPBOARD | no | no | no | no | no | ? | no | no | yes |
-| `1045` — Extended Reverse-wraparound mode (XTREVWRAP2) | yes | no | yes | no | no | ? | no | no | yes |
-| `1046` — Enable switching to/from Alternate Screen Buffer | no | no | no | no | no | ? | yes | no | yes |
-| `1047` — Use Alternate Screen Buffer | yes | no | yes | yes | no | ? | yes | no | yes |
-| `1048` — Save cursor as in DECSC | yes | no | yes | no | no | ? | yes | no | yes |
-| `1049` — Save cursor as in DECSC and use alternate screen buffer | yes | yes | yes | yes | no | ? | yes | yes | yes |
-| `1050` — Set terminfo/termcap function-key mode | no | no | no | no | no | ? | no | no | yes |
-| `1051` — Set Sun function-key mode | no | no | no | no | no | ? | no | no | yes |
-| `1060` — Set legacy keyboard emulation, i.e, X11R6 | no | no | no | no | no | ? | no | no | yes |
-| `1061` — Set VT220 keyboard emulation | no | no | no | no | no | ? | no | no | yes |
-| `1070` — Use private color registers for each graphic | yes | no | no | yes | yes | ? | yes | no | yes |
-| `1243` — Arrow keys swapping (BiDi) | no | no | no | no | no | ? | yes | no | no |
-| `2001` — Enable readline mouse button-1 | no | no | no | no | no | ? | no | no | yes |
-| `2002` — Enable readline mouse button-2 | no | no | no | no | no | ? | no | no | yes |
-| `2003` — Enable readline mouse button-3 | no | no | no | no | no | ? | no | no | yes |
-| `2004` — Set bracketed paste mode | yes | yes | yes | yes | yes | ? | yes | yes | yes |
-| `2005` — Enable readline character-quoting | no | no | no | no | no | ? | no | no | yes |
-| `2006` — Enable readline newline pasting | no | no | no | no | no | ? | no | no | yes |
-| `2026` — Synchronized Output | yes | yes | yes | yes | yes | ? | no | yes | no |
-| `2027` — Grapheme Clustering | yes | no | yes | yes | yes | ? | no | no | no |
-| `2028` — Text reflow | yes | no | no | no | no | ? | no | no | no |
-| `2029` — Passive Mouse Tracking | yes | no | no | no | no | ? | no | no | no |
-| `2030` — Report grid cell selection | yes | no | no | no | no | ? | no | no | no |
-| `2031` — Color palette updates | yes | yes | yes | yes | no | ? | yes | no | no |
-| `2048` — In-Band Window Resize Notifications | yes | yes | yes | yes | no | ? | no | no | no |
-| `2500` — Mirror box drawing characters | no | no | no | no | no | ? | yes | no | no |
-| `2501` — BiDi autodetection | no | no | no | no | no | ? | yes | no | no |
-| `5522` — Bracketed Paste MIME | yes | yes | no | no | no | ? | no | no | no |
-| `8452` — Sixel scrolling leaves cursor to right of graphic | yes | no | no | yes | yes | ? | no | no | yes |
-| `9001` — win32-input-mode | yes | no | no | no | yes | ? | no | no | no |
-| `737769` — Input Method Editor (IME) mode | ? | no | ? | yes | ? | ? | ? | ? | ? |
+| `1` — Cursor Keys Mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `2` — ANSI/VT52 Mode | yes | no | no | no | yes | n/a | yes | no | yes |
+| `3` — Column Mode | yes | yes | yes | no | yes | n/a | yes | no | yes |
+| `4` — Scrolling Mode | yes | no | yes | no | no | n/a | no | no | yes |
+| `5` — Screen Mode (light or dark screen) | yes | yes | yes | yes | no | n/a | yes | no | yes |
+| `6` — Origin Mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `7` — Auto Wrap Mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `8` — Auto Repeat Mode | yes | yes | yes | no | no | n/a | yes | no | no |
+| `9` — Interlace Mode / Mouse X10 tracking | yes | no | yes | no | no | n/a | yes | no | yes |
+| `10` — Editing Mode / Show toolbar (rxvt) | yes | no | no | no | no | n/a | no | no | no |
+| `12` — Katakana Shift Mode / Blinking cursor (xterm) | yes | no | yes | yes | yes | n/a | no | yes | yes |
+| `13` — Space Compression/Field Delimiter Mode / Start blinking cursor (xterm) | no | no | no | no | no | n/a | no | no | yes |
+| `14` — Transmit Execution Mode / Enable XOR of blinking cursor control (xterm) | no | no | no | no | no | n/a | no | no | yes |
+| `18` — Print Form Feed | yes | no | no | no | no | n/a | no | no | yes |
+| `19` — Printer Extent | yes | no | no | no | no | n/a | no | no | yes |
+| `25` — Text Cursor Enable Mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `30` — Show scrollbar (rxvt) | yes | no | no | no | no | n/a | no | no | yes |
+| `34` — Cursor Right to Left Mode | yes | no | no | no | no | n/a | no | no | no |
+| `35` — Hebrew (Keyboard) Mode / Enable font-shifting functions (rxvt) | yes | no | no | no | no | n/a | no | no | yes |
+| `36` — Hebrew Encoding Mode | yes | no | no | no | no | n/a | no | no | no |
+| `38` — Tektronix 4010/4014 Mode | no | no | no | no | no | n/a | no | no | yes |
+| `40` — Carriage Return/New Line Mode / Allow 80⇒132 mode (xterm) | yes | no | yes | no | no | n/a | yes | no | yes |
+| `41` — Unidirectional Print Mode / more(1) fix (xterm) | yes | no | no | no | no | n/a | no | no | yes |
+| `42` — National Replacement Character Set Mode | yes | no | no | no | no | n/a | no | no | yes |
+| `44` — Graphics Print Color Mode / Turn on margin bell (xterm) | no | no | no | no | no | n/a | no | no | yes |
+| `45` — Graphics Print Color Syntax / Reverse-wraparound mode (xterm) | yes | no | yes | yes | yes | n/a | no | no | yes |
+| `46` — Graphics Print Background Mode / Start logging (xterm) | yes | no | no | no | no | n/a | no | no | no |
+| `47` — Graphics Rotated Print Mode / Use Alternate Screen Buffer (xterm) | yes | no | yes | yes | no | n/a | yes | no | yes |
+| `57` — Greek/N-A Keyboard Mapping Mode | yes | no | no | no | no | n/a | no | no | no |
+| `59` — Kanji/Katakana Display Mode | no | no | no | no | no | n/a | yes | no | no |
+| `61` — Vertical Cursor Coupling Mode | yes | no | no | no | no | n/a | yes | no | no |
+| `64` — Page Cursor Coupling Mode | yes | no | no | no | no | n/a | yes | no | no |
+| `66` — Numeric Keypad Mode | yes | no | yes | yes | no | n/a | yes | no | yes |
+| `67` — Backarrow Key Mode | yes | no | no | no | no | n/a | no | no | yes |
+| `68` — Keyboard Usage Mode | yes | no | no | no | no | n/a | no | no | no |
+| `69` — Vertical Split Screen Mode / DECLRMM - Left Right Margin Mode | yes | no | yes | no | yes | n/a | yes | no | yes |
+| `73` — Transmission Rate Limiting | yes | no | no | no | no | n/a | no | no | no |
+| `80` — Sixel Display Mode | yes | no | no | yes | yes | n/a | yes | no | yes |
+| `81` — Key Position Mode | yes | no | no | no | no | n/a | no | no | no |
+| `95` — No Clearing Screen on Column Change Mode | yes | no | no | no | no | n/a | no | no | no |
+| `96` — Right to Left Copy Mode | yes | no | no | no | no | n/a | no | no | no |
+| `97` — CRT Save Mode | yes | no | no | no | no | n/a | no | no | no |
+| `98` — Auto Resize Mode | yes | no | no | no | no | n/a | no | no | no |
+| `99` — Modem Control Mode | yes | no | no | no | no | n/a | no | no | no |
+| `100` — Auto Answerback Mode | yes | no | no | no | no | n/a | no | no | no |
+| `101` — Conceal Answerback Message Mode | yes | no | no | no | no | n/a | no | no | no |
+| `102` — Ignore Null Mode | yes | no | no | no | no | n/a | no | no | no |
+| `103` — Half Duplex Mode | yes | no | no | no | no | n/a | no | no | no |
+| `104` — Secondary Keyboard Language Mode | yes | no | no | no | no | n/a | no | no | no |
+| `106` — Overscan Mode | yes | no | no | no | no | n/a | no | no | no |
+| `112` — Review Previous Lines Mode | no | no | no | no | no | n/a | yes | no | no |
+| `1000` — Send Mouse X & Y on button press | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1001` — Use Hilite Mouse Tracking | yes | no | no | no | no | n/a | yes | no | yes |
+| `1002` — Use Cell Motion Mouse Tracking | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1003` — Use All Motion Mouse Tracking | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1004` — Send FocusIn/FocusOut events | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1005` — Enable UTF-8 Mouse Mode | yes | yes | yes | no | yes | n/a | no | yes | yes |
+| `1006` — Enable SGR Mouse Mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `1007` — Enable Alternate Scroll Mode | yes | no | yes | yes | no | n/a | yes | yes | yes |
+| `1010` — Scroll to bottom on tty output | no | no | no | no | no | n/a | no | no | yes |
+| `1011` — Scroll to bottom on key press | no | no | no | no | no | n/a | no | no | yes |
+| `1014` — Enable fastScroll resource | no | no | no | no | no | n/a | no | no | yes |
+| `1015` — Enable urxvt Mouse Mode | yes | no | yes | yes | no | n/a | no | no | yes |
+| `1016` — Enable SGR Mouse PixelMode | yes | yes | yes | yes | yes | n/a | no | no | yes |
+| `1021` — Bold/italic implies high intensity | no | no | no | no | no | n/a | yes | no | no |
+| `1034` — Interpret "meta" key | no | no | no | yes | no | n/a | no | no | yes |
+| `1035` — Enable special modifiers for Alt and NumLock keys | no | no | yes | yes | no | n/a | no | no | yes |
+| `1036` — Send ESC when Meta modifies a key | no | no | yes | yes | no | n/a | yes | no | yes |
+| `1037` — Send DEL from the editing-keypad Delete key | no | no | no | no | no | n/a | no | no | yes |
+| `1039` — Send ESC when Alt modifies a key | no | no | yes | no | no | n/a | no | no | yes |
+| `1040` — Keep selection even if not highlighted | no | no | no | no | no | n/a | no | no | yes |
+| `1041` — Use the CLIPBOARD selection | no | no | no | no | no | n/a | no | no | yes |
+| `1042` — Enable Urgency window manager hint when Control-G is received | no | no | no | yes | no | n/a | no | yes | yes |
+| `1043` — Enable raising of the window when Control-G is received | no | no | no | no | no | n/a | no | no | yes |
+| `1044` — Reuse the most recent data copied to CLIPBOARD | no | no | no | no | no | n/a | no | no | yes |
+| `1045` — Extended Reverse-wraparound mode (XTREVWRAP2) | yes | no | yes | no | no | n/a | no | no | yes |
+| `1046` — Enable switching to/from Alternate Screen Buffer | no | no | no | no | no | n/a | yes | no | yes |
+| `1047` — Use Alternate Screen Buffer | yes | no | yes | yes | no | n/a | yes | no | yes |
+| `1048` — Save cursor as in DECSC | yes | no | yes | no | no | n/a | yes | no | yes |
+| `1049` — Save cursor as in DECSC and use alternate screen buffer | yes | yes | yes | yes | no | n/a | yes | yes | yes |
+| `1050` — Set terminfo/termcap function-key mode | no | no | no | no | no | n/a | no | no | yes |
+| `1051` — Set Sun function-key mode | no | no | no | no | no | n/a | no | no | yes |
+| `1060` — Set legacy keyboard emulation, i.e, X11R6 | no | no | no | no | no | n/a | no | no | yes |
+| `1061` — Set VT220 keyboard emulation | no | no | no | no | no | n/a | no | no | yes |
+| `1070` — Use private color registers for each graphic | yes | no | no | yes | yes | n/a | yes | no | yes |
+| `1243` — Arrow keys swapping (BiDi) | no | no | no | no | no | n/a | yes | no | no |
+| `2001` — Enable readline mouse button-1 | no | no | no | no | no | n/a | no | no | yes |
+| `2002` — Enable readline mouse button-2 | no | no | no | no | no | n/a | no | no | yes |
+| `2003` — Enable readline mouse button-3 | no | no | no | no | no | n/a | no | no | yes |
+| `2004` — Set bracketed paste mode | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| `2005` — Enable readline character-quoting | no | no | no | no | no | n/a | no | no | yes |
+| `2006` — Enable readline newline pasting | no | no | no | no | no | n/a | no | no | yes |
+| `2026` — Synchronized Output | yes | yes | yes | yes | yes | n/a | no | yes | no |
+| `2027` — Grapheme Clustering | yes | no | yes | yes | yes | n/a | no | no | no |
+| `2028` — Text reflow | yes | no | no | no | no | n/a | no | no | no |
+| `2029` — Passive Mouse Tracking | yes | no | no | no | no | n/a | no | no | no |
+| `2030` — Report grid cell selection | yes | no | no | no | no | n/a | no | no | no |
+| `2031` — Color palette updates | yes | yes | yes | yes | no | n/a | yes | no | no |
+| `2048` — In-Band Window Resize Notifications | yes | yes | yes | yes | no | n/a | no | no | no |
+| `2500` — Mirror box drawing characters | no | no | no | no | no | n/a | yes | no | no |
+| `2501` — BiDi autodetection | no | no | no | no | no | n/a | yes | no | no |
+| `5522` — Bracketed Paste MIME | yes | yes | no | no | no | n/a | no | no | no |
+| `8452` — Sixel scrolling leaves cursor to right of graphic | yes | no | no | yes | yes | n/a | no | no | yes |
+| `9001` — win32-input-mode | yes | no | no | no | yes | n/a | no | no | no |
+| `737769` — Input Method Editor (IME) mode | ? | no | ? | yes | ? | n/a | ? | ? | ? |
 
 ## Where measurement and documentation disagree
 
-9 of the features covered by both a runtime probe and the documented matrix disagree. Every case so far runs the same way — the source says yes, the running terminal says no — and has one of two causes. Either the feature ships **disabled** (xterm answers the Sixel probe only at an emulation level that enables it; xterm and Alacritty gate OSC 52), or it is implemented but **not advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled underlines without answering the capability query. In both cases the documented column is the better guide to what the terminal can do, and the measured column to what it will admit to.
+8 of the features covered by both a runtime probe and the documented matrix disagree. Every case runs the same way — the source says yes, the running terminal says no — and each has a reason worth knowing. Some are **shipped disabled**: xterm and Alacritty gate OSC 52 behind a setting. The rest are **implemented but not advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled underlines perfectly well without answering the capability query. Two former entries are gone because the harness now launches xterm correctly — Sixel is gated on its graphics ID and DECRQCRA on a window-op permission, neither of which is a conformance level. Where they still differ, the documented column is the better guide to what the terminal can do, and the measured column to what it will admit to.
 
 | Feature | Terminal | Measured | Documented |
 |---|---|---|---|
-| Sixel graphics | xterm | no | yes |
 | OSC 52 clipboard set/query | Alacritty | no | yes |
 | OSC 52 clipboard set/query | xterm | no | yes |
 | SGR 58/59 underline color | Konsole | no | yes |
@@ -305,7 +307,14 @@ Compiled from each terminal's source tree and documentation rather than measured
 | Focus in/out reporting | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
 | SGR extended mouse reporting | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
 | SGR-Pixel mouse reporting | yes | yes | yes | yes | yes | yes | no | no | yes | no | yes | no | ? |
-| DEC locator (DECELR / DECSLE / DECRQLP) | yes | no | no | no | no | no | no | no | partial | no | yes | ? | ? |
+| DEC locator (DECELR / DECSLE / DECRQLP) | yes | no | no | no | no | no | no | no | partial | no | yes | no | ? |
+| X10 mouse reporting (mode 9) | yes | no | yes | no | no | no | yes | no | yes | no | yes | no | ? |
+| VT200 mouse reporting (mode 1000) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
+| Highlight mouse tracking (mode 1001) | partial | no | no | no | no | no | partial | no | yes | no | no | no | ? |
+| Button-event tracking (mode 1002) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
+| Any-event tracking (mode 1003) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
+| SGR-pixel coordinates (mode 1016) | yes | yes | yes | yes | yes | yes | partial | no | yes | no | yes | yes | ? |
+| Passive mouse tracking (mode 2029) | yes | no | no | no | no | no | partial | no | no | no | no | no | ? |
 
 ### Other
 
