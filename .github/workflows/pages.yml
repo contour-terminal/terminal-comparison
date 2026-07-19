@@ -1,0 +1,57 @@
+name: Publish report to GitHub Pages
+
+# The site is regenerated from the committed results rather than served as-is, so a
+# pull request that adds results/<platform>/ cannot leave docs/index.html stale.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --quiet -r harness/requirements.txt
+
+      - name: Regenerate the report
+        run: python harness/make_report.py
+
+      - name: Fail if the committed report is out of date
+        run: |
+          if ! git diff --quiet -- docs/index.html REPORT.md; then
+            echo "::error::docs/index.html or REPORT.md is stale."
+            echo "Run 'python3 harness/make_report.py' and commit the result."
+            git diff --stat -- docs/index.html REPORT.md
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

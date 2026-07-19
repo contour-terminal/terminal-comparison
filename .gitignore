@@ -1,0 +1,15 @@
+# The pinned ucs-detect checkout and its virtualenv are created by
+# harness/setup-ucs-detect.sh and are not part of the repository.
+/.ucs-detect/
+
+# Per-run scratch that is not evidence: terminal stderr logs, display server logs,
+# the throwaway config homes, and the exit-status sentinels.
+results/*/config/
+results/*/*.term.log
+results/*/*.rc
+results/*/xvfb-*.log
+results/*/weston.log
+results/*/weston.ini
+
+__pycache__/
+*.pyc

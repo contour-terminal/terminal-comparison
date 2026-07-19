@@ -1,0 +1,143 @@
+# Which measured fields from a ucs-detect YAML are surfaced in the report, and how.
+#
+# Everything here is *measured* -- the value comes from a probe the terminal answered
+# during the run, not from documentation.  That makes it reproducible, but it also
+# means a "no" can mean "not supported", "not enabled in the default configuration",
+# or "the probe asked the wrong question".  Where that distinction is known to matter,
+# a `caveat` is attached and rendered next to the row.
+
+# --- capability probes, read from terminal_results ---------------------------------
+probes:
+  - id: sixel
+    field: sixel
+    name: Sixel graphics
+    category: graphics
+    caveat: >-
+      xterm implements Sixel but answers this probe only when started with an
+      emulation level that enables it (for example `-ti vt340`); the harness starts
+      it with defaults, so its "no" reflects the default configuration, not a
+      missing implementation.
+
+  - id: kitty_graphics
+    field: kitty_graphics
+    name: Kitty graphics protocol
+    category: graphics
+
+  - id: kitty_keyboard
+    field: kitty_keyboard
+    name: Kitty keyboard protocol
+    category: input
+    truthy_when_dict: true
+
+  - id: kitty_clipboard
+    field: kitty_clipboard_protocol
+    name: Kitty clipboard (OSC 5522)
+    category: clipboard
+
+  - id: kitty_notifications
+    field: kitty_notifications
+    name: Kitty notifications
+    category: other
+    truthy_when_dict: true
+
+  - id: kitty_pointer_shapes
+    field: kitty_pointer_shapes
+    name: Kitty pointer shapes (OSC 22)
+    category: other
+    truthy_when_dict: true
+
+  - id: osc52_clipboard
+    field: osc52_clipboard
+    name: OSC 52 clipboard
+    category: clipboard
+    caveat: >-
+      Several terminals ship OSC 52 disabled by default for security reasons, so a
+      "no" here may be policy rather than absence.
+
+  - id: styled_underlines
+    field: styled_underlines
+    name: Styled underlines (CSI 4:x)
+    category: colors
+
+  - id: colored_underlines
+    field: colored_underlines
+    name: Underline colour (SGR 58)
+    category: colors
+
+  - id: decrqss
+    field: decrqss
+    name: DECRQSS (request selection or setting)
+    category: query
+
+  - id: decrqcra
+    field: decrqcra
+    name: DECRQCRA (checksum of rectangular area)
+    category: query
+    caveat: >-
+      The reply's final byte is contested: xterm answers `* y`, and a probe expecting
+      `$ y` records a false negative. Treat a "no" here as unconfirmed rather than
+      absent.
+
+# --- DEC private modes, read from terminal_results.modes ---------------------------
+# `supported` is what DECRQM reported; a mode the terminal does not recognise answers
+# "not recognised" and is rendered as "no".
+modes:
+  - number: 2027
+    name: Grapheme clustering
+    category: unicode
+    note: Governs whether width is measured per grapheme cluster or per codepoint.
+  - number: 2026
+    name: Synchronized output
+    category: other
+  - number: 2048
+    name: In-band resize notification
+    category: window
+  - number: 2004
+    name: Bracketed paste
+    category: input
+  - number: 1004
+    name: Focus in/out events
+    category: input
+  - number: 1006
+    name: SGR mouse reporting
+    category: input
+  - number: 1016
+    name: SGR-pixel mouse reporting
+    category: input
+  - number: 1049
+    name: Alternate screen buffer
+    category: window
+  - number: 7
+    name: Auto-wrap (DECAWM)
+    category: other
+
+# --- ucs-detect Unicode test categories -------------------------------------------
+unicode_categories:
+  - key: unicode_wide_results
+    name: Wide
+    blurb: Characters that must occupy two columns.
+  - key: narrow_results
+    name: Narrow
+    blurb: Characters that must occupy exactly one column.
+  - key: emoji_vs16_results
+    name: VS16
+    blurb: >-
+      Emoji presentation selector. VS16 may promote a cluster to two columns, so the
+      expectation is a width of 2.
+  - key: emoji_vs15_results
+    name: VS15
+    blurb: >-
+      Text presentation selector. VS15 must NOT change the cluster's width, so a wide
+      base is still expected to measure 2. See the VS15 section of the report.
+  - key: emoji_zwj_results
+    name: ZWJ
+    blurb: Zero-width-joiner emoji sequences, which must measure as a single cluster.
+  - key: ri_results
+    name: Flags (RI)
+    blurb: Regional-indicator pairs forming flag emoji.
+  - key: sri_results
+    name: Lone RI
+    blurb: A single regional indicator, with no pair to join.
+  - key: sfz_results
+    name: Skin tone
+    blurb: Fitzpatrick skin-tone modifiers applied to a base emoji.

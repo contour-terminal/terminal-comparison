@@ -1,0 +1,261 @@
+From e71783b819cda73222d6913bb2979f0ceb34c4c3 Mon Sep 17 00:00:00 2001
+From: Christian Parpart <christian@parpart.family>
+Date: Sun, 19 Jul 2026 10:19:41 +0200
+Subject: [PATCH] VS15 must not narrow an already-emitted grapheme cluster
+
+The VS15 test asserted that a wide base character followed by U+FE0E advances the
+cursor by one column, i.e. that the terminal gives a column back after the base has
+already been placed. terminal-unicode-core forbids exactly that.
+
+The specification is explicit that the two variation selectors are not symmetric.
+VS16 "will force the grapheme cluster's width to be 2, which may possibly cause
+reflowing of that symbol to the next line". VS15 "will NOT change the underlying
+width but only change the display to prefer textual non-colored presentation".
+
+The reason is mechanical rather than stylistic. A terminal reaches the selector only
+after the base character has been placed and the cursor advanced. Growing a cluster
+needs more room, which a terminal can still take. Shrinking one means undoing work
+that is already committed -- un-wrapping a line that has wrapped, un-scrolling
+content that has left the screen -- so a terminal that narrows on VS15 ends up with
+behaviour no application can predict.
+
+Because the tables hold only bases that are wide by default, the old expectation
+inverted the result: a conforming terminal scored 0%, and a terminal was rewarded
+for the forbidden behaviour. Measured against xterm 406, which has no mode 2027 and
+can therefore only report the unchanged width:
+
+    before   0/158   every entry recorded measured_by_terminal=2 against
+                     measured_by_wcwidth=1
+    after  158/158
+
+The expectation is now the width of the base character on its own, resolved per
+sequence rather than fixed for the table, so it stays correct if the table ever
+gains a narrow base. test_support() accepts a callable for that; the constant form
+is untouched for every other caller.
+
+VS15_WIDE_TO_NARROW is renamed VS15_WIDE_UNCHANGED, and its generator's comments no
+longer describe a wide-to-narrow transition.
+
+Signed-off-by: Christian Parpart <christian@parpart.family>
+---
+ scripts/make_vs15_table.py | 16 +++++++++-------
+ ucs_detect/__init__.py     | 38 +++++++++++++++++++++++++++++++++++---
+ ucs_detect/measure.py      | 34 ++++++++++++++++++++++++++++------
+ ucs_detect/table_vs15.py   |  7 ++++---
+ 4 files changed, 76 insertions(+), 19 deletions(-)
+
+diff --git a/scripts/make_vs15_table.py b/scripts/make_vs15_table.py
+index 3e46321..64ac461 100644
+--- a/scripts/make_vs15_table.py
++++ b/scripts/make_vs15_table.py
+@@ -66,7 +66,8 @@ def fetch_vs15_data():
+     """
+     Fetch VS15 (text style) sequences from Unicode emoji-variation-sequences.txt.
+ 
+-    Returns characters that are wide by default and become narrow with VS15.
++    Returns characters that are wide by default.  Their width is expected to stay
++    wide when VS15 follows: the selector changes presentation, not width.
+     """
+     fname = os.path.join(PATH_DATA, "emoji-variation-sequences-latest.txt")
+     do_retrieve(url=URL_EMOJI_VARIATION_SEQUENCES, fname=fname)
+@@ -86,8 +87,8 @@ def fetch_vs15_data():
+                 continue
+             cp_str = line.split("FE0E")[0].strip()
+             cp = int(cp_str, 16)
+-            # Only include characters that are wide by default
+-            # these transition from wide (2) to narrow (1) with VS15.
++            # Only include characters that are wide by default; these are the
++            # interesting case, because a terminal must NOT narrow them to 1.
+             if wcwidth.wcwidth(chr(cp)) == 2:
+                 all_sequences.append((cp, 0xFE0E))
+ 
+@@ -99,15 +100,16 @@ def main():
+     version, all_sequences = fetch_vs15_data()
+     cjk_count = sum(1 for cp, _ in all_sequences if is_cjk(cp))
+ 
+-    print(f"# Found {len(all_sequences)} VS15 wide-to-narrow sequences", file=sys.stderr)
++    print(f"# Found {len(all_sequences)} VS15 sequences over a wide base", file=sys.stderr)
+     print(f"# Found {cjk_count} CJK sequences", file=sys.stderr)
+ 
+     print("# VS-15 table for testing emoji variation sequences")
+     print("# Sourced from Unicode emoji-variation-sequences.txt")
+-    print("# Only includes characters that are wide by default (wcwidth=2)")
+-    print("# and should become narrow (width=1) when followed by VS15 (U+FE0E)")
++    print("# Only includes characters that are wide by default (wcwidth=2).")
++    print("# VS15 (U+FE0E) selects text presentation and must NOT change the width:")
++    print("# the cluster is expected to stay 2 columns wide.")
+     print()
+-    print("VS15_WIDE_TO_NARROW = (")
++    print("VS15_WIDE_UNCHANGED = (")
+     print(f"    ('{version}', (")
+     for seq in all_sequences:
+         print(f"        {seq},")
+diff --git a/ucs_detect/__init__.py b/ucs_detect/__init__.py
+index 0969896..b041fbf 100755
+--- a/ucs_detect/__init__.py
++++ b/ucs_detect/__init__.py
+@@ -43,7 +43,7 @@ from ucs_detect.table_sfz import STANDALONE_FITZPATRICK
+ from ucs_detect.table_sri import STANDALONE_REGIONAL_INDICATORS
+ from ucs_detect.table_zwj import EMOJI_ZWJ_SEQUENCES
+ from ucs_detect.table_lang import LANG_GRAPHEMES
+-from ucs_detect.table_vs15 import VS15_WIDE_TO_NARROW
++from ucs_detect.table_vs15 import VS15_WIDE_UNCHANGED
+ from ucs_detect.table_vs16 import VS16_NARROW_TO_WIDE
+ from ucs_detect.table_wide import WIDE_CHARACTERS
+ from ucs_detect.table_narrow import NARROW_CHARACTERS
+@@ -118,6 +118,38 @@ def init_term(stream):
+     return term, writer
+ 
+ 
++def vs15_expected_width(wchar):
++    """Return the expected column advance of a base character followed by VS15.
++
++    VS15 (U+FE0E) selects *text* presentation.  It does not change how many columns
++    the grapheme cluster occupies, so the expectation is the width of the base
++    character on its own.
++
++    terminal-unicode-core is explicit that the two variation selectors are not
++    symmetric.  VS16 "will force the grapheme cluster's width to be 2, which may
++    possibly cause reflowing of that symbol to the next line", whereas VS15 "will NOT
++    change the underlying width but only change the display to prefer textual
++    non-colored presentation".
++
++    The asymmetry is mechanical rather than stylistic.  A terminal reaches the
++    selector only after the base character has already been placed and the cursor
++    advanced.  Growing a cluster needs more room, which a terminal can still take;
++    shrinking one means giving a column back, which means undoing work that is
++    already committed -- un-wrapping a line that has wrapped, un-scrolling content
++    that has left the screen.  Terminals that attempt it end up with behaviour no
++    application can predict.
++
++    This test previously expected width 1 for every sequence, i.e. it required the
++    terminal to narrow an already-emitted wide cluster.  That rewarded the very
++    behaviour the specification forbids.
++
++    See: https://github.com/contour-terminal/terminal-unicode-core
++         spec/terminal-unicode-core.tex, "Variation Selector 15"
++    """
++    base = wchar[0] if isinstance(wchar, tuple) else wchar
++    return max(1, wcwidth.wcwidth(chr(base)))
++
++
+ def run(stream, limit_codepoints, limit_errors, limit_graphemes, limit_graphemes_pct, limit_codepoints_wide_pct, include_uncommon_codepoints, save_yaml, save_json, no_terminal_test, no_languages_test, timeout_cps, timeout_query, stop_at_error, set_software_name, set_software_version, limit_category_time=0, cursor_report_delay_ms=0, detect_all_dec_modes=False, test_only="all", terminal_full_probe=False, silent=False, no_final_summary=False, test_all=False, **_kwargs):
+     """Program entry point."""
+ 
+@@ -131,7 +163,7 @@ def run(stream, limit_codepoints, limit_errors, limit_graphemes, limit_graphemes
+         ri_table = REGIONAL_INDICATOR_FLAGS
+         zwj_table = EMOJI_ZWJ_SEQUENCES
+         vs16_table = VS16_NARROW_TO_WIDE
+-        vs15_table = VS15_WIDE_TO_NARROW
++        vs15_table = VS15_WIDE_UNCHANGED
+         lang_table = LANG_GRAPHEMES
+         narrow_table = NARROW_CHARACTERS
+     else:
+@@ -350,7 +382,7 @@ def run(stream, limit_codepoints, limit_errors, limit_graphemes, limit_graphemes
+ 
+             if _should_run("unicode", "vs15"):
+                 emoji_vs15_results = measure.test_support(
+-                    table=vs15_table, expected_width=1,
++                    table=vs15_table, expected_width=vs15_expected_width,
+                     test_type="vs15",
+                     label="Variation Selector-15",
+                     **test_kwargs,
+diff --git a/ucs_detect/measure.py b/ucs_detect/measure.py
+index a74cc74..753c306 100644
+--- a/ucs_detect/measure.py
++++ b/ucs_detect/measure.py
+@@ -449,6 +449,19 @@ def wchar_to_str(wchar):
+     return "".join(chr(cp) for cp in wchar)
+ 
+ 
++def resolve_expected_width(expected_width, wchar):
++    """Resolve the expected column advance for *wchar*.
++
++    *expected_width* is either a constant, which is the common case, or a callable
++    mapping a sequence to its own expectation.  The callable form exists for tests
++    whose expectation follows the base character rather than the sequence as a whole
++    (see VS15 in ucs_detect/__init__.py).
++    """
++    if callable(expected_width):
++        return expected_width(wchar)
++    return expected_width
++
++
+ def exit_and_display_timeout_error(term, writer, timeout, **_kwargs):
+     """Display timeout error and exit."""
+     term.flushinp(timeout=0.05)
+@@ -498,7 +511,11 @@ def test_support(
+     silent=False,
+     bg_rgb=None,
+ ):
+-    """Test terminal support for a Unicode character table."""
++    """Test terminal support for a Unicode character table.
++
++    *expected_width* may be an int, or a callable resolved per sequence by
++    :func:`resolve_expected_width`.
++    """
+     success_report = collections.defaultdict(int)
+     failure_report = collections.defaultdict(list)
+     time_report = {}
+@@ -506,7 +523,9 @@ def test_support(
+     if suppress_output or silent:
+         outer_ypos, outer_xpos = _get_pos_or_exit(term, writer, timeout)
+ 
+-    cell_inner = expected_width + 3
++    # Column layout only; a per-sequence expectation uses the widest cell it can produce.
++    nominal_width = 2 if callable(expected_width) else expected_width
++    cell_inner = nominal_width + 3
+     num_columns = max(1, (term.width - 1) // cell_inner)
+ 
+     category_start = time.monotonic()
+@@ -646,14 +665,17 @@ def test_support(
+                     delta_ypos = end_ypos - start_ypos
+                     delta_xpos = end_xpos - start_xpos
+ 
+-                if (delta_ypos, delta_xpos) == (0, expected_width):
++                wchar_expected_width = resolve_expected_width(
++                    expected_width, wchar)
++
++                if (delta_ypos, delta_xpos) == (0, wchar_expected_width):
+                     success_report[ver] += 1
+                 else:
+                     entry = {"wchar": unicode_escape_string(wchars_str)}
+                     if delta_ypos != 0:
+                         entry["delta_ypos"] = delta_ypos
+-                    if delta_xpos != expected_width:
+-                        entry["measured_by_wcwidth"] = expected_width
++                    if delta_xpos != wchar_expected_width:
++                        entry["measured_by_wcwidth"] = wchar_expected_width
+                         entry["measured_by_terminal"] = delta_xpos
+                     failure_report[ver].append(entry)
+ 
+@@ -673,7 +695,7 @@ def test_support(
+                             ),
+                             wchars_display=wchars_str,
+                             measured_by_terminal=delta_xpos,
+-                            measured_by_wcwidth=expected_width,
++                            measured_by_wcwidth=wchar_expected_width,
+                         )
+                         if not should_continue:
+                             stop_at_error.disable()
+diff --git a/ucs_detect/table_vs15.py b/ucs_detect/table_vs15.py
+index 688d70e..6c192a8 100644
+--- a/ucs_detect/table_vs15.py
++++ b/ucs_detect/table_vs15.py
+@@ -1,9 +1,10 @@
+ # VS-15 table for testing emoji variation sequences
+ # Sourced from Unicode emoji-variation-sequences.txt
+-# Only includes characters that are wide by default (wcwidth=2)
+-# and should become narrow (width=1) when followed by VS15 (U+FE0E)
++# Only includes characters that are wide by default (wcwidth=2).
++# VS15 (U+FE0E) selects text presentation and must NOT change the width:
++# the cluster is expected to stay 2 columns wide.
+ 
+-VS15_WIDE_TO_NARROW = (
++VS15_WIDE_UNCHANGED = (
+     ('9.0.0', (
+         (8986, 65038),
+         (8987, 65038),
+-- 
+2.55.0
+
