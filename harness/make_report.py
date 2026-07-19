@@ -119,7 +119,13 @@ def mode_value(doc: dict, number: int) -> str:
 
 
 def probe_result(probe: dict | None, spec: dict) -> str:
-    """Resolve one VT probe row to yes/no/unknown, or a number rendered as text."""
+    """Resolve one VT probe row to yes/no/unknown, or to text for the literal kinds.
+
+    Three renderings, chosen by the spec: a plain boolean row, a `numeric` count, and
+    a `listing` row that prints the names a terminal answered with rather than
+    flattening them to yes/no.  The last exists because "which payload formats" is
+    the answer to the question, and a tick would throw it away.
+    """
     if not probe:
         return "unknown"
     value = probe
@@ -129,9 +135,24 @@ def probe_result(probe: dict | None, spec: dict) -> str:
         value = value[part]
     if spec.get("numeric"):
         return str(value)
+    if spec.get("listing"):
+        # An empty list is a real answer -- the terminal named nothing -- and reads
+        # as the same dash a "no" gets, rather than as an unanswered question.
+        return ", ".join(value) if value else "no"
     if value is None:
         return "unknown"
     return "yes" if value else "no"
+
+
+def probe_is_literal(spec: dict, verdict: str) -> bool:
+    """True when a probe row prints its value instead of rendering a support pill.
+
+    A numeric or listing row still falls back to a pill when its verdict is one of
+    the support words: "unknown" when the probe did not run, "no" when a listing came
+    back empty.  Otherwise a terminal that was never measured would show the literal
+    word "unknown" in a column of dashes and ticks.
+    """
+    return bool(spec.get("numeric") or spec.get("listing")) and verdict not in SUPPORT_MARK
 
 
 def cross_check(platforms, caps, vt_features, keys) -> list[dict]:
@@ -393,11 +414,12 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
 
     probes = caps.get("vt_probes") or []
     if probes and any(p.probes for p in platforms):
-        add("## Page memory and the DEC locator (measured by probe)")
+        add("## What DECRQM cannot answer (measured by probe)")
         add("")
-        add("Neither is a DEC private mode, so DECRQM cannot answer for them. These rows "
-            "come from `harness/vt_probe.py`, which uses the sequence inside the terminal "
-            "and reads the reply.")
+        add("Page memory, the DEC locator, right-to-left cursor movement and Glyph "
+            "Protocol are not DEC private modes, so DECRQM cannot answer for them. These "
+            "rows come from `harness/vt_probe.py`, which uses the sequence inside the "
+            "terminal and reads the reply.")
         add("")
         rows, notes = [], []
         for spec in probes:
@@ -405,7 +427,7 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
             for key in keys:
                 probe = next((p.probes[key] for p in platforms if key in p.probes), None)
                 verdict = probe_result(probe, spec)
-                row.append(verdict if spec.get("numeric")
+                row.append(verdict if probe_is_literal(spec, verdict)
                            else SUPPORT_MARK.get(verdict, SUPPORT_MARK["unknown"])[2])
             rows.append(row)
             if spec.get("caveat"):
@@ -469,9 +491,10 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
                 "source says yes, the running terminal says no — and each has a reason "
                 "worth knowing. Some are **shipped disabled**: xterm and Alacritty gate "
                 "OSC 52 behind a setting. The rest are **implemented but not "
-                "advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole and "
-                "Alacritty draw styled underlines perfectly well without answering the "
-                "capability query. Two former entries are gone because the harness now "
+                "advertised**: the underline probes ask XTGETTCAP, and VTE, Konsole, "
+                "Alacritty and Rio draw styled or coloured underlines perfectly well "
+                "without answering the capability query. Two former entries are gone "
+                "because the harness now "
                 "launches xterm correctly — Sixel is gated on its graphics ID and "
                 "DECRQCRA on a window-op permission, neither of which is a conformance "
                 "level. Where they still differ, the documented column is the better "
@@ -508,6 +531,7 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
             add(f"### {category.replace('_', ' ').title()}")
             add("")
             table_rows = []
+            table_notes = []
             for row in rows_in_cat:
                 cells = [row["name"]]
                 values = row.get("values")
@@ -520,8 +544,20 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
                         cells.append(SUPPORT_MARK.get(verdict,
                                                       SUPPORT_MARK["unknown"])[2])
                 table_rows.append(cells)
+                if row.get("notes"):
+                    table_notes.append(f"- **{row['name']}** — "
+                                       f"{str(row['notes']).strip()}")
             add(md_table(["Feature"] + [BY_KEY[k].name for k in all_keys], table_rows))
             add("")
+            # A note carries the distinction a verdict cannot -- COLRv0 against COLRv1,
+            # or a capability that exists but ships disabled. The HTML puts it under the
+            # feature name; a markdown table has no room for a paragraph in a cell, so
+            # it goes below the table rather than being dropped from this rendering.
+            if table_notes:
+                add("**Notes**")
+                add("")
+                lines.extend(table_notes)
+                add("")
 
     add("## Licence")
     add("")
@@ -762,9 +798,10 @@ from 0/158 to 158/158.</p></div>""")
 
     probes = caps.get("vt_probes") or []
     if probes and any(p.probes for p in platforms):
-        add("<h2>Page memory and the DEC locator "
+        add("<h2>What DECRQM cannot answer "
             "<span class='note'>(measured by probe)</span></h2>")
-        add('<p class="note">Neither is a DEC private mode, so DECRQM cannot answer for '
+        add('<p class="note">Page memory, the DEC locator, right-to-left cursor movement '
+            "and Glyph Protocol are not DEC private modes, so DECRQM cannot answer for "
             "them. These rows come from <code>harness/vt_probe.py</code>, which uses the "
             "sequence inside the terminal and reads the reply.</p>")
         rows, notes = [], []
@@ -774,7 +811,7 @@ from 0/158 to 158/158.</p></div>""")
                 probe = next((p.probes[key] for p in platforms if key in p.probes), None)
                 verdict = probe_result(probe, spec)
                 row.append(f'<span class="num">{html.escape(verdict)}</span>'
-                           if spec.get("numeric") else cell(verdict))
+                           if probe_is_literal(spec, verdict) else cell(verdict))
             rows.append(row)
             if spec.get("caveat"):
                 notes.append(f"<li><strong>{html.escape(spec['name'])}</strong> — "
@@ -833,8 +870,9 @@ from 0/158 to 158/158.</p></div>""")
                 "&mdash; and each has a reason worth knowing. Some are <strong>shipped "
                 "disabled</strong>: xterm and Alacritty gate OSC 52 behind a setting. The "
                 "rest are <strong>implemented but not advertised</strong>: the underline "
-                "probes ask XTGETTCAP, and VTE, Konsole and Alacritty draw styled "
-                "underlines perfectly well without answering the capability query. Two "
+                "probes ask XTGETTCAP, and VTE, Konsole, Alacritty and Rio draw styled or "
+                "coloured underlines perfectly well without answering the capability "
+                "query. Two "
                 "former entries are gone because the harness now launches xterm correctly "
                 "&mdash; Sixel is gated on its graphics ID and DECRQCRA on a window-op "
                 "permission, neither of which is a conformance level. Where they still "

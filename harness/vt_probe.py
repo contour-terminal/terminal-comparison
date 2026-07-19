@@ -2,9 +2,9 @@
 """Probe VT features that DECRQM cannot answer, from inside the terminal.
 
 DEC private modes are easy: DECRQM asks and the terminal answers, which is how the
-mouse modes and mode 2027 get measured.  Page memory and the DEC locator are not modes,
-so the only way to find out whether a terminal has them is to use them and look at what
-comes back.
+mouse modes and mode 2027 get measured.  Page memory, the DEC locator and Glyph
+Protocol are not modes, so the only way to find out whether a terminal has them is to
+use them and look at what comes back.
 
 This script runs *inside* the terminal under test, on its tty, and writes JSON.  It only
 uses the standard library so it needs no virtualenv.
@@ -18,10 +18,12 @@ is recorded as unsupported rather than hanging the run.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
 import select
+import struct
 import sys
 import termios
 import tty
@@ -242,6 +244,139 @@ def probe_page_sequences(term: Tty) -> dict:
     return result
 
 
+#: The literal ASCII string every Glyph Protocol message opens with -- the hex of
+#: U+25A1 WHITE SQUARE, the tofu box, written out rather than sent as the character.
+#: A terminal must ignore any APC whose body does not start with it, which is what
+#: makes the probe safe to send at a terminal that has never heard of the protocol.
+GLYPH_ID = "25a1"
+
+#: Both spellings of the string terminator.  Glyph Protocol frames replies with the
+#: 7-bit `ESC \`, but reading until either that or the 8-bit C1 ST costs nothing and
+#: means a terminal that answers in C1 is not recorded as silent.
+ST_FINAL = "\\\x9c"
+
+#: Where the registration round-trip puts its glyph.  U+100000 is the first codepoint
+#: of Supplementary PUA-B: inside the range the protocol allows, and covered by no
+#: known system font.  That matters -- on a BMP PUA codepoint a system font could
+#: answer `status=system` and the query could not tell a stored registration from a
+#: font that happened to cover it.  Here `glossary` can only have come from us.
+GLYPH_PROBE_CP = 0x100000
+
+
+def _glyph_message(body: str) -> str:
+    """Wrap a Glyph Protocol message *body* in APC framing behind the identifier."""
+    return f"\x1b_{GLYPH_ID};{body}\x1b\\"
+
+
+def _glyph_reply(reply: str, verb: str) -> dict | None:
+    """Parse a Glyph Protocol reply to *verb*, or None when there was not one.
+
+    An empty dict and None are different answers.  A terminal that implements the
+    protocol but advertises no payload format replies `s ; fmt=` and parses to
+    `{"fmt": ""}`; a terminal that never heard of the protocol says nothing at all
+    and parses to None.  The report needs to keep those apart.
+    """
+    match = re.match(rf"\x1b_{GLYPH_ID};{verb}((?:;[^\x1b\x9c]*)?)(?:\x1b\\|\x9c)", reply)
+    if not match:
+        return None
+    params = {}
+    for field in match.group(1).split(";"):
+        key, sep, value = field.partition("=")
+        if sep:
+            params[key] = value
+    return params
+
+
+def _triangle_glyf() -> bytes:
+    """Return a minimal `glyf` simple-glyph record: one closed on-curve triangle.
+
+    Built here rather than sliced out of a font because this script may not import
+    anything outside the standard library, and 29 bytes of TrueType is cheaper to
+    write than a dependency.  The layout is the OpenType `glyf` simple-glyph one:
+    a header, the index of each contour's last point, the (empty) instruction
+    stream, one flag byte per point, then x and y as deltas from the previous point.
+
+    Flag 0x01 is ON_CURVE_POINT with neither SHORT bit set, so every coordinate is
+    a signed 16-bit delta -- the long form, chosen because it is the form that needs
+    no reasoning about when a delta happens to fit in a byte.
+    """
+    xs, ys = (100, 500, 900), (0, 700, 0)
+
+    def deltas(values: tuple[int, ...]) -> bytes:
+        out, previous = b"", 0
+        for value in values:
+            out += struct.pack(">h", value - previous)
+            previous = value
+        return out
+
+    return b"".join((
+        struct.pack(">hhhhh", 1, min(xs), min(ys), max(xs), max(ys)),
+        struct.pack(">HH", len(xs) - 1, 0),   # last point index; no instructions
+        bytes([0x01]) * len(xs),
+        deltas(xs), deltas(ys),
+    ))
+
+
+def probe_glyph_protocol(term: Tty) -> dict:
+    """Probe Glyph Protocol: the `s` advertisement, then a registration that sticks.
+
+    Glyph Protocol lets an application ship a vector glyph to the terminal at runtime
+    and render it from a Private Use Area codepoint, instead of asking the user to
+    install a patched font.  It rides on APC, so a terminal that does not implement
+    it drops the message and answers nothing -- which is the same silence as every
+    other probe here, and is read the same way.
+
+    Two questions, because they can disagree:
+
+    * `s` asks what the terminal *advertises*.  Any reply at all confirms the
+      protocol; the `fmt=` list names the payload formats it will accept (`glyf` for
+      monochrome outlines, `colrv0` and `colrv1` for the two OpenType colour models).
+    * The round-trip asks whether a registration is actually *stored*.  The probe
+      registers a triangle at U+100000, asks `q` who covers that codepoint, and only
+      counts it when the answer names `glossary`.  A terminal that acknowledges `r`
+      with `status=0` and keeps nothing would pass the first check and fail this one.
+
+    The registration is cleared again with `c`, so the probe leaves the terminal's
+    glossary as it found it.
+    """
+    result = {
+        "supported": False, "formats": [], "registers": False,
+        "glossary_confirms": False, "raw": {},
+    }
+
+    reply = term.ask(_glyph_message("s"), ST_FINAL)
+    result["raw"]["support"] = repr(reply)
+    advertised = _glyph_reply(reply, "s")
+    if advertised is None:
+        return result
+    result["supported"] = True
+    result["formats"] = [f for f in advertised.get("fmt", "").split(",") if f]
+
+    # `glyf` is the only format v1 requires, and the only one this probe can author.
+    # A terminal advertising nothing but colour formats is not one we can round-trip.
+    if "glyf" not in result["formats"]:
+        return result
+
+    payload = base64.b64encode(_triangle_glyf()).decode("ascii")
+    ack = term.ask(
+        _glyph_message(f"r;cp={GLYPH_PROBE_CP:x};upm=1000;{payload}"), ST_FINAL)
+    result["raw"]["register"] = repr(ack)
+    registered = _glyph_reply(ack, "r")
+    result["registers"] = bool(registered and registered.get("status") == "0")
+    if not result["registers"]:
+        return result
+
+    seen = term.ask(_glyph_message(f"q;cp={GLYPH_PROBE_CP:x}"), ST_FINAL)
+    result["raw"]["query"] = repr(seen)
+    queried = _glyph_reply(seen, "q")
+    coverage = set((queried or {}).get("status", "").split(",")) - {""}
+    result["glossary_confirms"] = "glossary" in coverage
+
+    term.ask(_glyph_message(f"c;cp={GLYPH_PROBE_CP:x}"), ST_FINAL)   # restore
+    term.drain()
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True)
@@ -255,6 +390,7 @@ def main() -> int:
             results["page_sequences"] = probe_page_sequences(term)
             results["locator"] = probe_locator(term)
             results["rtl"] = probe_rtl(term)
+            results["glyph_protocol"] = probe_glyph_protocol(term)
     except Exception as error:           # a probe must never fail the whole run
         results["error"] = f"{type(error).__name__}: {error}"
     finally:

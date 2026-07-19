@@ -154,6 +154,44 @@ vt_probes:
       pointing device answered. Under a headless display that is the expected reply, so
       this row separates "implements the locator" from "a device was there".
 
+  - id: glyph_protocol
+    path: glyph_protocol.supported
+    name: Glyph Protocol
+    category: glyphs
+    caveat: >-
+      Detection is the protocol's own `s` verb — `ESC _ 25a1 ; s ESC \` — whose reply
+      is defined to be the way an application finds out. Glyph Protocol rides on APC,
+      which terminals are required to ignore when they do not recognise the message,
+      so a terminal without it answers nothing and that silence is the "no" here. The
+      protocol is new (v1.0 April 2026, v1.9 by May) and Rio is its first
+      implementation, so a dash in this row is the expected reading for everyone else
+      rather than a gap.
+
+  - id: glyph_formats
+    path: glyph_protocol.formats
+    name: Glyph payload formats accepted
+    category: glyphs
+    listing: true
+    caveat: >-
+      The `fmt=` list from the same reply, printed rather than reduced to yes/no
+      because which formats a terminal takes is the answer to the question. `glyf` is
+      the monochrome outline every v1 terminal must accept; `colrv0` and `colrv1` are
+      the two OpenType colour models, added in v1.2. An empty list means the terminal
+      speaks the protocol but will reject every registration.
+
+  - id: glyph_registers
+    path: glyph_protocol.glossary_confirms
+    name: Glyph registration is stored
+    category: glyphs
+    caveat: >-
+      Functional, not declarative — the same separation the DECRQM behaviour check
+      makes below. The probe registers a 29-byte `glyf` triangle at U+100000 and then
+      asks the `q` verb who covers that codepoint, counting it only when the answer
+      names `glossary`. U+100000 is chosen because no known system font covers it, so
+      the coverage reply cannot be a font answering in the registration's place. A
+      terminal that acknowledged the registration with `status=0` and kept nothing
+      would pass the row above and fail this one. The probe clears the slot again.
+
   - id: rtl_honoured
     path: rtl.rtl_honoured
     name: DECRLM actually moves the cursor leftwards

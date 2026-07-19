@@ -60,10 +60,10 @@ The same change is on a branch against upstream, ready to be proposed:
 This repository keeps the patch form regardless, so a run is reproducible from the pinned
 upstream commit whether or not the change is ever merged.
 
-With the corrected oracle, three of the nine terminals measured here narrow on VS15
-(foot, Ghostty and kitty), and two combine grapheme clustering with the specified
-behaviour (Contour and WezTerm). Under the old oracle those verdicts were exactly
-reversed, which is the point.
+With the corrected oracle, four of the ten terminals measured here narrow on VS15 — foot,
+Ghostty and kitty on every sequence tested, Rio on all but a handful — and two combine
+grapheme clustering with the specified behaviour (Contour and WezTerm). Under the old
+oracle those verdicts were exactly reversed, which is the point.
 
 ## Reproducing a run
 
@@ -101,7 +101,7 @@ produces **no** capability or DEC-mode data, only Unicode scores.
 | ucs-detect width measurement | Wide, narrow, VS15, VS16, ZWJ, flags, skin tone, languages |
 | ucs-detect capability probes | Sixel, kitty graphics/keyboard/clipboard, OSC 52, underline styles, DECRQSS … |
 | DECRQM (`--all-dec-modes`) | ~158 DEC private modes, including every mouse-reporting protocol from X10 (9) through SGR-pixel (1016), and Contour's passive mouse tracking (2029) |
-| `harness/vt_probe.py` | DEC page memory and the DEC locator |
+| `harness/vt_probe.py` | DEC page memory, the DEC locator, right-to-left cursor movement, Glyph Protocol |
 
 ### Where a terminal is not measured at its defaults
 
@@ -130,15 +130,46 @@ records that the implementation exists in the source.
 The general rule: where a terminal ships a capability disabled, the measured table says
 what it does and the documented table says what it can do, and the caveats name which.
 
-### Page memory and the locator
+### What DECRQM cannot answer
 
-These exist because page memory and the locator are **not** DEC private modes, so
-DECRQM cannot answer for them. The probe uses the sequences instead: it asks DECXCPR
-(`CSI ? 6 n`) whether the reply carries a page number, moves with PPA and NP/PP and
-re-asks to confirm the cursor actually changed page, and enables the locator with DECELR
-before requesting a position with DECRQLP. Each probe restores what it changed, and each
-read is bounded by a timeout, because a terminal without the sequence simply says nothing.
-The raw replies are kept in the JSON so a verdict can be re-checked by hand.
+These exist because page memory, the locator, right-to-left movement and Glyph Protocol
+are **not** DEC private modes, so DECRQM cannot answer for them. The probe uses the
+sequences instead: it asks DECXCPR (`CSI ? 6 n`) whether the reply carries a page number,
+moves with PPA and NP/PP and re-asks to confirm the cursor actually changed page, and
+enables the locator with DECELR before requesting a position with DECRQLP. Each probe
+restores what it changed, and each read is bounded by a timeout, because a terminal
+without the sequence simply says nothing. The raw replies are kept in the JSON so a
+verdict can be re-checked by hand.
+
+### Glyph Protocol
+
+[Glyph Protocol](https://rapha.land/introducing-glyph-protocol-for-terminals/) lets an
+application ship a vector glyph to the terminal at runtime and render it from a Private
+Use Area codepoint, instead of asking the user to install a patched font. It is new — v1.0
+in April 2026, v1.9 by May — and [Rio](https://rioterm.com/), whose author designed it, is
+so far the only implementation. Its [spec](https://github.com/raphamorim/rio/blob/main/specs/glyph-protocol.md)
+lives in the Rio tree.
+
+It is measured in two parts, because they can disagree:
+
+- **Detection** is the protocol's own `s` verb, `ESC _ 25a1 ; s ESC \`, whose reply is
+  defined to be how an application finds out. The messages ride on APC, which a terminal
+  is required to ignore when it does not recognise them, so a terminal without the
+  protocol answers nothing and that silence is the "no" — the same reading every other
+  probe here gives silence. The reply's `fmt=` list is printed rather than reduced to
+  yes/no, because *which* payload formats a terminal accepts is the answer to the
+  question.
+- **Whether a registration is actually stored** is a separate row, on the same principle
+  as the DECRLM behaviour check: the probe registers a 29-byte `glyf` triangle at
+  U+100000, then asks the `q` verb who covers that codepoint and counts it only when the
+  answer names `glossary`. U+100000 is chosen because no known font covers it, so the
+  coverage reply cannot be a system font answering in the registration's place. A terminal
+  that acknowledged the registration and kept nothing would pass the first row and fail
+  this one. The slot is cleared again afterwards.
+
+The `glyf` payload is built by hand in `vt_probe.py` rather than sliced out of a font,
+because the probe may not import anything outside the standard library — and 29 bytes of
+TrueType is cheaper to write than a dependency.
 
 ### How the measurement is isolated
 
