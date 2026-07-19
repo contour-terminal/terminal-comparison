@@ -1,0 +1,1499 @@
+- id: platform_linux_x11
+  name: Linux/X11
+  category: platform
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/CMakeLists.txt:262 find_package(X11 REQUIRED) on Linux
+    kitty: glfw/x11_window.c; docs/faq.rst:335 (X11 icon support)
+    ghostty: src/apprt/gtk/winproto/x11.zig
+    foot: 'README.md: ''Wayland native, DE agnostic''; no X11 backend, no XWayland fallback mentioned'
+    wezterm: https://wezterm.org/config/lua/config/enable_wayland.html (falls back to X11 when enable_wayland=false)
+    gnome-terminal: Primary target platform; GTK/GDK X11 backend, GNOME desktop default terminal on X11
+      sessions
+    konsole: Primary target; standard Qt xcb platform plugin, no special-casing needed
+    mintty: README.md — mintty is the Cygwin/MSYS2 terminal, a native Win32 GUI app; no X11 build exists
+    iterm2: iTerm2 is macOS-only (iterm2.com documentation and FAQ)
+    xterm: xterm is the reference X11 terminal emulator (Xt/Xaw toolkit); xterm.man throughout
+    alacritty: https://alacritty.org/ and GitHub README — 'supported platforms currently consist of BSD,
+      Linux, macOS and Windows'; X11 is the default Linux backend
+- id: platform_linux_wayland
+  name: Linux/Wayland
+  category: platform
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/CMakeLists.txt:12 option(CONTOUR_WAYLAND ... ON); Qt6::WaylandClient
+    kitty: glfw/wl_window.c, glfw/wl_text_input.c
+    ghostty: src/apprt/gtk/winproto/wayland.zig
+    foot: 'README.md: ''The fast, lightweight and minimalistic Wayland terminal emulator'''
+    wezterm: enable_wayland default true since 20220624-141144-bd1b7c5d; https://wezterm.org/config/lua/config/enable_wayland.html
+    gnome-terminal: GTK4 Wayland backend supported; ships as default terminal on GNOME Wayland sessions
+      (Fedora/Ubuntu GNOME)
+    konsole: src/session/Session.cpp:49-51 KWaylandExtras, KWindowSystem::isPlatformWayland() checks in
+      main.cpp:216
+    mintty: Windows-only Win32 window (src/winmain.c); no Wayland backend
+    iterm2: macOS-only application
+    xterm: X11-only application; no native Wayland backend (runs only via XWayland, not native)
+    alacritty: Native Wayland support; CHANGELOG 0.11.0 (xdg_activation_v1 urgency, wp-fractional-scale-v1)
+- id: platform_macos
+  name: macOS
+  category: platform
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: partial
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'README.md: ''Available on all major platforms, Linux, macOS, FreeBSD, OpenBSD, Windows.'''
+    kitty: kitty/cocoa_window.m, kitty/core_text.m; kitty/data-types.h:26-28 (__APPLE__ GL 3.3)
+    ghostty: macos/Sources/ - native AppKit/SwiftUI app
+    foot: Wayland-only design; no macOS backend in meson.build/wayland.c
+    wezterm: https://wezterm.org/features.html - runs on Linux, macOS, Windows 10, FreeBSD, NetBSD
+    gnome-terminal: No official macOS app; only buildable via MacPorts pulling in the full GNOME/X11 stack,
+      not a supported native build (ports.macports.org/port/gnome-terminal)
+    konsole: No official KDE prebuilt binaries; buildable via MacPorts/KDE Craft; CMakeLists.txt:396 has
+      APPLE bundle metadata only
+    mintty: No macOS port exists; Win32-only codebase
+    iterm2: Native Cocoa/AppKit macOS application; https://iterm2.com/
+    xterm: Runs only via XQuartz (X11 server for macOS); not a native Cocoa app, no native macOS build
+    alacritty: https://github.com/alacritty/alacritty README platform list
+- id: platform_windows
+  name: Windows
+  category: platform
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: partial
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: README.md platform list; cmake/FindQt.cmake Windows-specific path
+    kitty: No Windows build; KITTY_OS reports only linux/macos/bsd (docs/conf.rst:46). WSL-only in practice.
+    ghostty: 'No apprt/windows backend; only libghostty-vt compiles for Windows (ghostty discussions #2563,
+      #12290)'
+    foot: Wayland-only design; no Windows backend
+    wezterm: https://wezterm.org/install/windows.html - 64-bit Windows 10.0.17763+
+    gnome-terminal: No Windows port; tightly coupled to the GNOME/GSettings/GVFS stack, no official Windows
+      builds exist
+    konsole: src/ptyqt/conptyprocess.cpp (ConPTY backend) + Windows CI, but KDE MR!814 'Make Konsole work
+      on Windows' still describes ongoing/experimental work
+    mintty: README.md — runs on Windows via Cygwin/MSYS2 as a native Win32 GDI window
+    iterm2: macOS-only application
+    xterm: Requires Cygwin/WSL plus an X server (e.g. VcXsrv/Xming); no native Windows port
+    alacritty: README — ConPTY backend; requires Windows 10 1809 or newer
+- id: platform_bsd
+  name: BSD
+  category: platform
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: partial
+    foot: partial
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'README.md / docs/index.md: ''From Linux and macOS to FreeBSD, OpenBSD and Windows'''
+    kitty: docs/conf.rst:46 KITTY_OS='bsd'; docs/glossary.rst:256; changelog FreeBSD/NetBSD fixes
+    ghostty: 'FreeBSD support merged via PR #7606 (gtk apprt, OpenGL, libxev kqueue) but no CI and no
+      active maintainer'
+    foot: No official BSD packaging confirmed in repo, but the Wayland+meson/pixman/fcft stack is portable
+      to BSD; repology lists a FreeBSD port (not verified in repo docs)
+    wezterm: https://wezterm.org/features.html - FreeBSD and NetBSD explicitly listed
+    gnome-terminal: Packaged in FreeBSD Ports (x11/gnome-terminal) and the OpenBSD GNOME meta-port
+    konsole: CMakeLists.txt:107-114 FreeBSD/Haiku linking; Konsole ships as part of KDE Plasma/Gear in
+      FreeBSD ports (freebsd.kde.org)
+    mintty: Windows-only; no BSD port
+    iterm2: macOS-only application
+    xterm: Ships as part of X11 on FreeBSD/OpenBSD/NetBSD (same xterm codebase, X11-based)
+    alacritty: README/site list BSD explicitly alongside Linux/macOS/Windows
+- id: gpu_acceleration
+  name: GPU-accelerated rendering
+  category: rendering
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'no'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''GPU-accelerated rendering''; src/contour/display/RhiRenderer.cpp'
+    kitty: docs/overview.rst:16 'using only OpenGL for rendering everything'
+    ghostty: src/renderer/backend.zig - Backend enum {opengl, metal, webgl}
+    foot: meson.build:148 pixman = dependency('pixman-1'); grid.c uses pixman_image_* for compositing
+      (CPU/software rendering, no OpenGL/Vulkan dependency anywhere in meson.build)
+    wezterm: config/src/frontend.rs:5 FrontEndSelection{OpenGL,WebGpu,Software}
+    gnome-terminal: 'gnome-terminal 3.56 (Mar 2025) moved to GTK4 (>=4.12) + vte-2.91-gtk4, giving GPU-composited
+      windows via GTK4''s GSK scene graph, but VTE still rasterizes glyphs via Cairo/Pango internally
+      (Phoronix: ''GNOME Terminal Working To Migrate To GTK 4, VTE To Overcome 40 FPS Cap'')'
+    konsole: 'TerminalDisplay : public QWidget with paintEvent(QPaintEvent*) (TerminalDisplay.h:558);
+      zero QOpenGL hits anywhere in src/'
+    mintty: src/wintext.c uses GDI (TextOutW/ExtTextOut) + Uniscribe (usp10.h); DirectWrite appears only
+      for non-BMP glyph-existence checks (wintext.c:4902,5005), not compositing
+    iterm2: Metal-based GPU renderer since v3.2 (GitLab wiki 'Metal Renderer'; Prefs > General > GPU Rendering)
+    xterm: Renders via Xlib/Xft (CPU-side); xterm.man faceName/renderFont resources describe Xft TrueType
+      rendering, no GPU path exists
+    alacritty: https://alacritty.org/ — 'a cross-platform, OpenGL terminal emulator'
+- id: gpu_api
+  name: GPU rendering API
+  category: rendering
+  values:
+    contour: Qt RHI (OpenGL, Vulkan, Metal, or Direct3D 11, selected by Qt's backend at runtime)
+    kitty: OpenGL 3.1+ (Linux, w/ extensions) / OpenGL 3.3 core (macOS)
+    ghostty: Metal (macOS), OpenGL 4.3+ (Linux/BSD), WebGL (wasm)
+    foot: none (software rendering via pixman + Wayland shm buffers)
+    wezterm: OpenGL (default); optional WebGpu via wgpu (Vulkan/Metal/DX12); Software fallback
+    gnome-terminal: GTK4 GSK scene graph (OpenGL 'NGL' renderer; Vulkan by default on Wayland since GTK
+      4.16)
+    konsole: none - CPU/software rasterization via QWidget+QPainter (Qt raster paint engine)
+    windows-terminal: unknown
+    mintty: None — GDI raster (CPU); DirectWrite only for glyph-existence probing
+    iterm2: Metal
+    xterm: none (Xlib/Xft, CPU-rendered)
+    alacritty: OpenGL 3.3 core (GLES 2.0 fallback)
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/display/TerminalRenderNode.cpp, RhiRenderer.cpp use QRhi abstraction
+    kitty: kitty/data-types.h:24-30; docs/changelog.rst:1843 (min lowered 3.3->3.1+ext on Linux); no Metal/Vulkan
+      path in source
+    ghostty: src/renderer/backend.zig:14-19; src/renderer/OpenGL.zig:37-38 (MIN_VERSION 4.3)
+    foot: meson.build:148,286,297,313,347-348 link pixman, no GL/Vulkan dep
+    wezterm: config/src/frontend.rs:5-9; https://wezterm.org/config/lua/config/front_end.html
+    gnome-terminal: GTK4 GSK renderer docs; gnome-terminal meson.build requires gtk4>=4.12 / vte-2.91-gtk4>=0.72.2
+    konsole: no QOpenGL/QRhi usage found anywhere in src/
+    mintty: src/wintext.c:4902,5005
+    iterm2: iTerm2 3.2 'new drawing engine that uses Metal' (news.ycombinator.com/item?id=17634547; GitLab
+      wiki Metal-Renderer)
+    xterm: xterm.man renderFont/faceName resources; no GPU/Vulkan/OpenGL/Metal reference anywhere in source
+      or docs
+    alacritty: README minimum requirement; GLES2 fallback renderer discussion in issue tracker
+- id: font_ligatures
+  name: Font ligatures
+  category: rendering
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Font ligatures support (such as in Fira Code)''; src/text_shaper/cluster_spans.h'
+    kitty: kitty/options/definition.py:109 disable_ligatures option (calt OpenType feature)
+    ghostty: src/font/shaper/harfbuzz.zig (HarfBuzz ligature-cluster handling); src/font/shaper/coretext.zig
+    foot: CHANGELOG.md:2599 'foot only shapes individual graphemes, not entire text runs. That means e.g.
+      ligatures are not supported.'
+    wezterm: config/src/config.rs harfbuzz_features; https://wezterm.org/config/lua/config/harfbuzz_features.html
+    gnome-terminal: Underlying Pango/HarfBuzz supports OpenType ligatures, but VTE's per-cell grid model
+      renders them incorrectly ('GNOME Terminal makes a mess of ligatures' - arongriffis.com/2020-02-09-gnome-terminal-ligatures)
+    konsole: Profile::WordModeCoding groups ligature-forming glyphs into one drawText() call; EditProfileAppearancePage.ui
+      'Coding ligatures characters'
+    mintty: docs/mintty.1:1972-1996 — Ligatures= / LigaturesSupport= options, rendered via Uniscribe
+    iterm2: Prefs > Profiles > Text > 'Use ligatures', rendered via CoreText (iterm2.com/documentation-fonts.html;
+      documentation-preferences-profiles-text.html)
+    xterm: No font-shaping/ligature engine; xterm draws one glyph per cell via Xft, no HarfBuzz/ligature
+      support mentioned in xterm.man
+    alacritty: 'GitHub issue #50 still open; custom rasterizer with no HarfBuzz shaping pass; PR #2677
+      (HarfBuzz ligatures) never merged — confirmed still unsupported in 2025 sources'
+- id: bitmap_emoji_fonts
+  name: Bitmap/emoji font support
+  category: rendering
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: partial
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Unicode: Emoji support ... including ZWJ, VS15, VS16 emoji'''
+    kitty: kitty/freetype.c:551 FT_LOAD_COLOR; kitty/fonts.c emoji_presentation handling
+    ghostty: src/font/Collection.zig (isColorGlyph / emoji presentation); src/config/Config.zig:131-134
+      (Apple Color Emoji / Noto Emoji defaults)
+    foot: 'README.md Fonts section: ''foot supports all fonts that can be loaded by freetype, including
+      bitmap fonts and color emoji fonts'''
+    wezterm: wezterm-font/src/ftwrap.rs:430,970 bitmap strike / colour-emoji handling; features.html 'Color
+      Emoji'
+    gnome-terminal: Cairo has supported color/bitmap emoji fonts since 1.15.8, integrated through Pango,
+      which VTE uses for text layout (cairographics.org color-font support)
+    konsole: Screen.cpp:1110-1186 EF_EMOJI_REPRESENTATION handling; dedicated emoji FontDialog.cpp
+    mintty: docs/mintty.1:1276-1290 — Emojis= option (noto/emojione graphics sets)
+    iterm2: Renders Apple Color Emoji natively via CoreText (standard macOS text rendering); non-ASCII
+      font can be set separately in Profiles > Text (iterm2.com/documentation-fonts.html)
+    xterm: Classic XLFD bitmap fonts fully supported (xterm.man faceName/bitmap font sections) plus emojiWidth
+      resource for cell-width handling; color emoji glyph rendering depends on the system's Xft/FreeType
+      build having upstreamed color-glyph support (historically Xft was monochrome-only)
+    alacritty: 'CHANGELOG 0.5.0 ''Colored emojis on Linux/BSD''; macOS renders emoji too, but Windows
+      colored-emoji issue #3082 remains open (greyscale only there)'
+- id: subpixel_antialiasing
+  name: Subpixel (LCD) antialiasing
+  category: rendering
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: partial
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: partial
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/text_shaper/open_shaper.cpp uses FT_LOAD_TARGET_LCD / FT_RENDER_MODE_LCD, FT_Library_SetLcdFilter
+    kitty: kitty/freetype.c:1299,1334,1397 use FT_RENDER_MODE_NORMAL only (grayscale AA); no LCD render
+      path
+    ghostty: src/font/face/freetype.zig and src/font/face/coretext.zig rasterize to a .grayscale Atlas
+      only; no LCD/subpixel atlas format
+    foot: doc/foot.ini.5.scd:1866 references subpixel rendering; font rendering delegated to fcft/FreeType+fontconfig
+      which honors fontconfig's rgba/subpixel hinting config
+    wezterm: https://wezterm.org/config/lua/config/freetype_render_target.html - HorizontalLcd render
+      target
+    gnome-terminal: Available via fontconfig/FreeType LCD-filter config under X11; typically forced to
+      grayscale AA under Wayland compositors (general Linux font-stack behavior, not a gnome-terminal-specific
+      toggle)
+    konsole: Only a global QFont::PreferAntialias/NoAntialias toggle (TerminalFonts.cpp:57); no explicit
+      LCD/subpixel control, and blur/WA_TranslucentBackground usage would disable subpixel AA when active
+    mintty: 'docs/mintty.1:1953-1955 — ''Full: Subpixel anti-aliasing (ClearType)'''
+    iterm2: 'iTerm2 implemented its own subpixel AA inside the Metal renderer to work around Apple removing
+      system-wide LCD font smoothing since macOS Mojave/11; GitLab issue #9035 documents rendering bugs
+      with subpixel AA + GPU renderer on Apple Silicon, and #7156 documents it being disabled under some
+      macOS versions'
+    xterm: xterm.man renderFont/faceName hand rendering to the Xft library, which supports LCD/subpixel
+      antialiasing via fontconfig configuration
+    alacritty: 'Issue #4059 ''Subpixel antialiasing is not available Linux''; issues #2/#3756 describe
+      subpixel mask handling as broken/unsupported — effectively greyscale AA only'
+- id: variable_fonts
+  name: Variable font support
+  category: rendering
+  support:
+    contour: unknown
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: unknown
+    wezterm: partial
+    gnome-terminal: 'yes'
+    konsole: unknown
+    windows-terminal: unknown
+    mintty: unknown
+    iterm2: unknown
+    xterm: unknown
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: No FT_MM_Var/fvar handling found in src/text_shaper; FreeType renders the default instance
+      but no explicit variable-axis control was found
+    kitty: kitty/fontconfig.c:198 FC_VARIABLE/FC_NAMED_INSTANCE; kitty/core_text.m:241 kCTFontVariationAttribute;
+      docs/kittens/choose-fonts.rst
+    ghostty: src/font/face.zig:71-73 font-variation support; Config.zig font-variation/-bold/-italic keys
+    foot: No mention of 'variable font' in foot or fcft README/CHANGELOG; fcft CHANGELOG.md (codeberg.org/dnkl/fcft)
+      has zero hits for 'variable font' through the Unreleased section
+    wezterm: 'No font_variations option; only explicit weight/stretch selection from variable-font instances
+      (wezterm GitHub discussion #6514)'
+    gnome-terminal: Inherited from Pango/HarfBuzz/FreeType OpenType variable-font axis support (Pango
+      ~1.44+), used system-wide by VTE's text layout
+    konsole: No source or documentation evidence found either way
+    mintty: No mention in man page, changelog or wiki; GDI+Uniscribe stack predates variable-font APIs,
+      but neither support nor absence is documented
+    iterm2: No documentation or changelog entry found describing OpenType variable-font axis support
+    xterm: No resource or documentation found addressing OpenType variable-font axis selection; Xft/FreeType
+      could load a variable font's default instance but no dedicated control was found
+    alacritty: CHANGELOG 0.4.2 — 'Handling of OpenType variable fonts'
+- id: tabs
+  name: Tabs
+  category: layout
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Terminal tabs''; src/contour/ui/TabStrip.qml'
+    kitty: docs/overview.rst (Creating tabs/windows); docs/layouts.rst
+    ghostty: src/apprt/gtk/class/window.zig (AdwTabView); macOS native NSWindow tabbing (TerminalController.swift)
+    foot: No tab-related key-bindings or options in doc/foot.ini.5.scd; README explicitly relies on window-manager/multiplexer
+      instead (server mode spawns separate windows, not tabs)
+    wezterm: https://wezterm.org/features.html - 'Multiple windows, splits/panes, and tabs'
+    gnome-terminal: 'help.gnome.org: ''Use tabs - Enable, add, remove and reorder Terminal tabs'''
+    konsole: ViewManager.cpp / TabbedViewContainer (widgets/ViewContainer.h)
+    mintty: docs/mintty.1:789-833 — 'Virtual Tabs' plus TabBar= interactive tabbar; implemented as synchronized
+      separate windows, not a single-window strip
+    iterm2: iterm2.com/features.html; core feature of the app
+    xterm: No tab concept in xterm.man; relies entirely on external window managers or terminal multiplexers
+    alacritty: FAQ — 'you won't find things like tabs or splits (which are best left to a window manager
+      or terminal multiplexer)'
+- id: split_panes
+  name: Split panes
+  category: layout
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/accessibility.md: ''a split window''; src/vtmux PaneNode tree; memory note ''Single
+      renderer: pane tree'''
+    kitty: docs/layouts.rst (Splits layout); docs/launch.rst
+    ghostty: macos/Sources/Features/Splits/SplitView.swift; GTK split support in src/apprt/gtk
+    foot: No split/pane key-bindings or options anywhere in doc/foot.ini.5.scd or README.md
+    wezterm: https://wezterm.org/features.html; config/src/keyassignment.rs SplitPane actions
+    gnome-terminal: No split feature in the help docs TOC or Preferences; GNOME design choice - split
+      panes are left to VTE-based forks like Tilix/Terminator, not gnome-terminal itself
+    konsole: ViewManager::splitLeftRight/splitTopBottom, ViewManager.cpp:124-167
+    mintty: No split-pane feature in docs or changelog
+    iterm2: 'iterm2.com/features.html: ''Divide a tab up into multiple panes, each one showing a different
+      session'''
+    xterm: No split-pane concept anywhere in xterm.man; relies on external tools (tmux/screen)
+    alacritty: Same FAQ statement — splits are an explicit non-goal
+- id: tab_pane_detach_reorder
+  name: Tab/pane detach & reorder
+  category: layout
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: partial
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: Cross-window tab move via setSession display-rebind; tab strip supports reordering
+    kitty: kitty/rc/detach_window.py, kitty/rc/detach_tab.py; docs/basic.rst:95-120; docs/changelog.rst:312
+      (drag-and-drop reorder/detach)
+    ghostty: src/apprt/gtk/class/window.zig:604,1607 (tab_view.reorderPage / tabViewPageDetached); macOS
+      tab reorder + 1.3 split drag-and-drop
+    foot: N/A - no tabs/panes feature exists (see tabs, split_panes rows)
+    wezterm: 'config/src/keyassignment.rs:566-567 MoveTab/MoveTabRelative + pane move_to_new_window/move_to_new_tab;
+      no native mouse drag-reorder (wezterm issue #549 open)'
+    gnome-terminal: help.gnome.org tabs page documents add/remove/reorder; tabs can be dragged out into
+      new windows (standard GTK notebook drag-to-detach)
+    konsole: ViewManager::detachTab/detachActiveTab (ViewManager.cpp:559-571), moveTabLeft/moveTabRight,
+      widgets/DetachableTabBar.cpp
+    mintty: docs/mintty.1:819-820 — reorder via drag-and-drop; detach is moot because tabs already are
+      separate windows synced by SessionGeomSync
+    iterm2: Standard native macOS tab dragging to reorder/detach into new windows; panes can be moved
+      between tabs (iterm2.com general usage docs)
+    xterm: N/A - xterm has neither tabs nor panes
+    alacritty: No tabs or panes exist to detach or reorder
+- id: quake_dropdown_mode
+  name: Quake/dropdown mode
+  category: layout
+  support:
+    contour: 'no'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: No quake/dropdown-terminal feature found in src/contour; matches for 'dropdown' are only
+      the new-tab profile picker menu (NewTabMenu.qml)
+    kitty: kittens/quick_access_terminal/main.py; docs/faq.rst:269 (panel kitten quake-like); docs/changelog.rst
+      'Quake like floating, translucent terminal window'
+    ghostty: src/apprt/gtk/ipc/toggle_quick_terminal.zig + winproto/wayland.zig (wlr-layer-shell, since
+      1.2); macos/Sources/Features/QuickTerminal/
+    foot: No 'quake'/'dropdown' mentions in README.md or doc/*.scd
+    wezterm: 'wezterm issue #1751 (Dropdown/Guake/Visor) still open; no native ToggleDropdown action -
+      requires external tdrop/WTQ'
+    gnome-terminal: Not built in; only achievable via separate GNOME Shell extensions (e.g. 'Quake Terminal',
+      extensions.gnome.org/extension/6307) that wrap an external terminal, not a gnome-terminal feature
+    konsole: No quake/dropdown/global-toggle-visibility code in src/; that feature lives in the separate
+      KDE app Yakuake, not Konsole
+    mintty: docs/mintty.1:1224-1229 — section titled 'Startup hotkey ("quake mode")'
+    iterm2: 'Hotkey Window feature: system-wide terminal toggled by a hotkey, pin/float/animate options
+      (iterm2.com/documentation-hotkey.html)'
+    xterm: No hotkey/dropdown window feature documented in xterm.man
+    alacritty: 'Issue #2975 is an unimplemented feature request; only third-party workarounds (Hammerspoon
+      on macOS, tdrop/AwesomeWM on Linux)'
+- id: fullscreen
+  name: Fullscreen mode
+  category: layout
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'src/contour/WindowController.h: setWindowFullScreen/toggleFullScreen; src/contour/Actions.h
+      ToggleFullscreen'
+    kitty: kitty/options/definition.py:3554 toggle_fullscreen; docs/basic.rst:148
+    ghostty: src/apprt/gtk/class/window.zig; macos/Sources/Features/Terminal/TerminalController.swift
+    foot: doc/foot.1.scd:85-86 -F,--fullscreen 'Start in fullscreen mode'; also toggleable via the fullscreen
+      key-binding in foot.ini.5.scd
+    wezterm: config/src/keyassignment.rs:538 ToggleFullScreen
+    gnome-terminal: help.gnome.org Customize Appearance section documents Fullscreen mode (F11)
+    konsole: MainWindow::viewFullScreen via KStandardAction::fullScreen, MainWindow.cpp:493,602-607
+    mintty: docs/mintty.1:677-679 — Alt+F11 / Alt+Enter toggle
+    iterm2: Native macOS fullscreen support
+    xterm: 'xterm.man: -fullscreen/+fullscreen options, fullscreen resource/class, fullscreen() key-binding
+      action, and XTWINOPS 10 ''FullscreenWin'' control sequence (ctlseqs.txt:3529)'
+    alacritty: ToggleFullscreen / ToggleSimpleFullscreen (macOS) keybinding actions; window.startup_mode
+      = Fullscreen|SimpleFullscreen
+- id: search_scrollback
+  name: Search in scrollback
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/ViCommands.h searchStart/searchDone/updateSearchTerm; src/contour/Actions.h
+      SearchReverse, FocusNextSearchMatch
+    kitty: kitty/options/definition.py:3092-3095 search_scrollback action (kitty_mod+/) via scrollback_pager
+    ghostty: src/terminal/search.zig, src/apprt/gtk/class/search_overlay.zig; macOS SurfaceSearchOverlay
+      - shipped in 1.3.0
+    foot: README.md 'Scrollback search' section; Ctrl+Shift+R starts search, Ctrl+R/Ctrl+S navigate matches
+    wezterm: config/src/keyassignment.rs:585 Search(Pattern); features.html (Ctrl-Shift-F)
+    gnome-terminal: help.gnome.org 'Working With Text' - text search / Find toolbar
+    konsole: widgets/IncrementalSearchBar.h + SessionController::findNextInHistory/findPreviousInHistory
+      (SessionController.cpp:640-651)
+    mintty: docs/mintty.1:755-760 — Alt+F3 search bar with match highlighting
+    iterm2: Cmd-F find field with regex (ICU syntax) support, searches scrollback history (iterm2.com
+      search docs)
+    xterm: No search/find feature documented anywhere in xterm.man; scrollback is view-only (scroll-lock,
+      jump-scroll actions only)
+    alacritty: CHANGELOG 0.7.0 added search with configurable keybindings and history; vi-mode '/' and
+      '?' search
+- id: url_hyperlink_click
+  name: URL/hyperlink click
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: partial
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Clickable hyperlinks via OSC 8'''
+    kitty: 'OSC 8: kitty/options/definition.py:2465 allow_hyperlinks; docs/basic.rst click_url mapping;
+      kittens/hints'
+    ghostty: src/config/Config.zig:1444-1456 (link-url, default true); src/renderer/link.zig
+    foot: 'README.md URLs section: keyboard-driven jump-label URL mode (Ctrl+Shift+O), NOT click-to-open
+      - ''unlike many other terminal emulators... foot uses a keyboard driven approach'''
+    wezterm: https://wezterm.org/features.html - Hyperlinks (OSC 8) plus implicit URL detection rules
+    gnome-terminal: help.gnome.org documents hyperlink/email handling; VTE implements OSC 8 hyperlinks
+      plus URL auto-detection, Ctrl+click to open
+    konsole: src/filterHotSpots/UrlFilter.cpp, EscapeSequenceUrlFilter.cpp (OSC 8 hyperlinks)
+    mintty: docs/mintty.1:596-613 — Ctrl+click opens paths and OSC 8 hyperlinks
+    iterm2: '''Semantic History'' - cmd-click opens URLs/files; native OSC 8 support also present in modern
+      versions'
+    xterm: No OSC 8 hyperlink support found (absent from ctlseqs.txt/charproc.c); URL opening only achievable
+      via manual user configuration of the exec-formatted() action plus a custom charClass resource -
+      not a default/built-in feature
+    alacritty: hints.enabled regex/hyperlink detection with click-to-open (xdg-open on Linux/BSD); OSC
+      8 hyperlink support since CHANGELOG 0.11.0
+- id: copy_on_select
+  name: Copy-on-select
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/Config.h SelectionAction::CopyToSelectionClipboard (default on_mouse_select action);
+      TerminalSession.cpp writes QClipboard::Selection
+    kitty: kitty/options/definition.py:762 copy_on_select option
+    ghostty: src/config/Config.zig:2446-2469, 8607-8642 (copy-on-select, OS-dependent default)
+    foot: 'README.md mouse section: single-click drag selection copies to primary selection on release'
+    wezterm: 'config/src/keyassignment.rs:427,436 copy_on_select: bool, default true'
+    gnome-terminal: 'Preferences > Profile > Text tab: ''Copy selected text into clipboard'' option (added
+      GNOME Terminal 3.38+); default behavior otherwise only fills the X11 PRIMARY selection for middle-click
+      paste'
+    konsole: Profile::AutoCopySelectedText property, EditProfileDialog.cpp:1940-1941
+    mintty: docs/mintty.1:2334 — CopyOnSelect=yes (default)
+    iterm2: Profiles > Terminal > 'Copy to pasteboard on selection' option (iterm2.com/features.html lists
+      'Copy on Select')
+    xterm: 'Default X11 PRIMARY-selection behavior: selecting text with the mouse copies it automatically
+      (xterm.man SELECT AND PASTE section, longstanding default xterm/X11 behavior)'
+    alacritty: selection.save_to_clipboard config option (default false, but supported) copies selection
+      to clipboard alongside X11 primary selection
+- id: rectangular_selection
+  name: Rectangular (block) selection
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Selector.h class RectangularSelection; Settings.h mouseBlockSelectionModifiers
+    kitty: kitty/options/definition.py:1008,1059 start_rectangle_selection
+    ghostty: src/terminal/SelectionGesture.zig:712 (rectangle_selection); src/Surface.zig:1196 - ctrl+alt
+      drag (Linux), opt+drag (macOS)
+    foot: 'README.md: ''Holding ctrl will create a block selection''; doc/foot.ini.5.scd:1756 ''Begin
+      an interactive block selection'''
+    wezterm: 'wezterm-gui/src/selection.rs:20-21 pub rectangular: bool'
+    gnome-terminal: 'help.gnome.org txt-select-text.html: hold Ctrl and drag (or Ctrl+Shift+drag) for
+      block/rectangular selection; Ctrl+Shift+Alt+arrows for keyboard block selection'
+    konsole: Screen::_blockSelectionMode / setSelectionStart(blockSelectionMode) - Screen.h:475-477, Screen.cpp:1830-1919
+    mintty: docs/mintty.1:532,1052 — Alt+drag, or Alt within keyboard-select mode
+    iterm2: 'Option(+Cmd)+drag makes a rectangular selection; Option+Shift extends it (GitLab issue #3509/#1087
+      discussion, general usage docs)'
+    xterm: 'Compile-time optional feature (OPT_BLOCK_SELECT); xterm.man: ''block-select: an optional (compile-time)
+      feature for supporting rectangular selections... bound to Meta button one''. ptyx.h:525 defaults
+      OPT_BLOCK_SELECT to 0 (disabled) unless explicitly enabled via --enable-block-select; this checkout''s
+      own config.log shows it built with OPT_BLOCK_SELECT 0'
+    alacritty: CHANGELOG 0.4.0 — 'Block selection mode when Control is held while starting a selection'
+- id: mouse_reporting_toggle
+  name: Mouse reporting toggles
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: Standard VT mouse tracking modes (1000/1002/1003/1006 etc.) implemented in vtbackend Screen/Terminal
+    kitty: kitty/screen.c:1722-1742 MOUSE_MODE (1000/1002/1003/1006, SGR/UTF8/urxvt) + shift-click override
+      via grabbed/ungrabbed mappings
+    ghostty: src/input/Binding.zig:775-784 toggle_mouse_reporting action; src/input/command.zig:642-645
+    foot: csi.c:359-411 implements X10/CLICK/DRAG mouse tracking modes (DECSET 9/1000/1002/1003 etc.)
+      with toggling via CSI
+    wezterm: config/src/config.rs:422-423 bypass_mouse_reporting_modifiers (default SHIFT)
+    gnome-terminal: VTE implements xterm-compatible mouse tracking protocols (X10/VT200/SGR) toggled by
+      apps via CSI ?1000h/l etc. (used by vim, tmux); VTE exposes no user-facing override to force-disable
+      an app's mouse capture
+    konsole: Emulation::setUsesMouseTracking/programRequestsMouseTracking (Emulation.h:205,304,531); TerminalDisplay::setAllowMouseTracking
+    mintty: docs/mintty.1:924-930,2446 — xterm-style mouse tracking; Shift overrides reporting
+    iterm2: 'iterm2.com/features.html: ''Mouse Reporting - Position cursor and highlight in Vim/Emacs'';
+      supports standard xterm mouse-tracking modes'
+    xterm: 'xterm originated most mouse tracking modes: X10, VT200 (1000), Hilite (1001), Cell Motion
+      (1002), All Motion (1003), Focus (1004), SGR (1006), urxvt (1015), pixel-position (1016) - ctlseqs.txt
+      Mouse Tracking section, ~line 2913-2955'
+    alacritty: Implements standard xterm mouse-reporting DECSET modes (used transparently by vim/tmux);
+      baseline VT behaviour, though not stated verbatim in a doc page
+- id: ime_dead_key_support
+  name: IME / dead-key support
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: partial
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/display/ImeQueryRect.h; Qt input-method integration in TerminalDisplay
+    kitty: glfw/ibus_glfw.c (Linux IME), glfw/xkb_glfw.c (dead keys/compose), glfw/wl_text_input.c (Wayland
+      IME)
+    ghostty: src/apprt/gtk/class/surface.zig:658 (gtk.IMMulticontext, filterKeypress); macOS NSTextInputClient
+      in SurfaceView_AppKit.swift
+    foot: 'README.md Features: ''IME (via text-input-v3)''; CHANGELOG.md:3253 dead-key support via libxkbcommon
+      compose files'
+    wezterm: config/src/config.rs:719 use_ime, :729 use_dead_keys
+    gnome-terminal: Uses the standard GTK input-method framework (IBus/XKB dead keys) shared by all GTK
+      text-input widgets including VTE
+    konsole: TerminalDisplay::inputMethodEvent/inputMethodQuery + InputMethodData preeditString, TerminalDisplay.h:367-369,609-610
+    mintty: docs/mintty.1:2211-2215 (IME state handling) + src/winmain.c:5164-5183 (WM_IME_* handlers);
+      dead keys via standard WM_CHAR composition
+    iterm2: Native macOS Cocoa text input (NSTextInputClient), full IME/dead-key support inherited from
+      the OS
+    xterm: xterm.man documents XIM input-method support (inputMethod, ximFont, 'OverTheSpot' resources,
+      line ~4228/704) plus X11 Compose-key sequence support (xterm.man:8766)
+    alacritty: 'CHANGELOG 0.13.0 ''Support for keybindings with dead keys'' and ''IME purpose is now set
+      to Terminal''; but issues #44/#2734 document inconsistent fcitx/IBus behaviour on Wayland and X11'
+- id: vi_mode_copy_mode
+  name: Keyboard-driven vi mode / copy mode
+  category: interaction
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: partial
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs: ''Vi-like input modes for improved navigation, selection and copy-n-paste''; src/vtbackend/ViCommands.cpp/.h'
+    kitty: No native modal copy-mode; delegates to external scrollback_pager (default 'less') at kitty/options/definition.py:543-557,
+      plus hints kitten (docs/kittens/hints.rst) for keyboard selection
+    ghostty: src/config/Config.zig:1853-1863 - generic modal 'key table' mechanism (since 1.3.0) explicitly
+      cited as a way to build copy/vim mode, but no built-in vi/copy mode ships by default
+    foot: No vi-mode/copy-mode keybinding section in doc/foot.ini.5.scd; only scrollback search (Ctrl+R/S)
+      and mouse-based selection exist, no modal keyboard navigation of scrollback
+    wezterm: https://wezterm.org/copymode.html - ActivateCopyMode with vi-style h/j/k/l/w/b/e; plus https://wezterm.org/quickselect.html
+    gnome-terminal: No built-in vi-style keyboard navigation/copy mode; the help docs' keyboard-shortcuts
+      page lists only standard Ctrl+Shift+C/V and Find-toolbar navigation
+    konsole: No vi-mode/copy-mode keyboard navigation found anywhere in src/ (only an unrelated doc-link
+      comment mentioning vim modes, Profile.h:349)
+    mintty: docs/mintty.1:1024-1063 — keyboard-driven scrollback/selection mode, arrow-key based rather
+      than vi/hjkl modal bindings
+    iterm2: Copy Mode (Cmd-Shift-C) - keyboard-driven selection using vi-like navigation keys (iterm2.com/documentation-copymode.html)
+    xterm: No vi-mode/keyboard-driven copy-mode documented in xterm.man; selection is mouse-driven only
+      (aside from basic keyboard selection actions)
+    alacritty: docs/features.md 'Vi Mode' — move/select/search/open links with vi bindings, 'v' to select,
+      'y' to yank
+- id: shell_integration
+  name: Shell integration (semantic prompt marks)
+  category: session
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'OSC 133 semantic prompt marks (memory: ''OSC 133 marks are logical-line positions''); OSC
+      133;B prompt-end mark support'
+    kitty: docs/shell-integration.rst:430-495 OSC 133;A/C/D marks; kitty/options/definition.py:2476 shell_integration
+    ghostty: src/shell-integration/{bash,zsh,fish,elvish,nushell}/ - OSC 133 marks; src/termio/shell_integration.zig
+    foot: 'README.md Shell integration section: OSC-7 (cwd), OSC-133;A/C/D (prompt jump, command-output
+      piping)'
+    wezterm: https://wezterm.org/shell-integration.html - OSC 133 semantic prompt marks, OSC 7 cwd, OSC
+      1337 user vars
+    gnome-terminal: VTE ships src/vte.sh upstream (installed to /etc/profile.d/vte.sh via meson), emitting
+      OSC 7 (cwd) and OSC 133 semantic-prompt marks when sourced by bash/zsh; Fedora et al. source it
+      by default
+    konsole: Vt102Emulation.h:198-199 SemanticPrompts=133 (OSC 133), handled in Vt102Emulation.cpp:1193;
+      Screen.h:574-585 REPL/semantic shell-integration mode
+    mintty: wiki/CtrlSeqs.md:741-752 — private scroll-marker sequence ESC[?7711h marks prompt lines for
+      prev/next-prompt navigation, plus MINTTY_OUTPUT; this is mintty's own sequence, not the OSC 133
+      standard
+    iterm2: iTerm2 extends the FinalTerm/OSC 133 prompt-mark convention plus proprietary OSC 1337 sequences
+      for hostname/cwd/vars; iterm2.com/documentation-shell-integration.html; works even over ssh
+    xterm: No OSC 133/semantic-prompt-mark convention found anywhere in ctlseqs.txt
+    alacritty: 'Issue #5850 ''Consider adding OSC 133'' still open; no native semantic prompt marks in
+      current stable'
+- id: session_restore
+  name: Session restore
+  category: session
+  support:
+    contour: 'no'
+    kitty: partial
+    ghostty: partial
+    foot: 'no'
+    wezterm: partial
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: No session-restore feature found in src/contour (no restoreSession/SessionRestore matches)
+    kitty: docs/sessions.rst startup_session/--session launches a saved layout; kitty/session.py save_as_session
+      snapshots windows/tabs/layout, but manual save/relaunch only - no automatic live persistence across
+      restarts
+    ghostty: src/config/Config.zig:2230-2260 window-save-state - 'currently only supported on macOS. This
+      has no effect on Linux.'
+    foot: No 'session' restore feature documented in README/doc/*.scd; server mode only shares process/fonts,
+      does not persist/restore layout across restarts
+    wezterm: Mux server keeps processes alive across detach/reattach (https://wezterm.org/multiplexing.html);
+      layout persistence across a full restart needs third-party plugins (wezterm-session-manager, resurrect.wezterm),
+      not built in
+    gnome-terminal: No built-in tab/session persistence across restarts; the old --save-config option
+      was removed in newer releases, requiring third-party scripts (github.com/jozala/gnome-terminal-session)
+    konsole: ViewManager::saveSessions/restoreSessions (ViewManager.cpp:1240-1405) wired to Qt/KDE session
+      management, main.cpp:266-267 isSessionRestored()
+    mintty: No session-restore or persisted-layout feature in man page or changelog
+    iterm2: 'iterm2.com/documentation-restoration.html: jobs run in long-lived servers so windows/tabs/panes
+      can be restored after iTerm2 crashes or restarts'
+    xterm: No session-save/restore feature documented in xterm.man
+    alacritty: 'Issue #8131 ''Session Manager Support'' open; no SESSION_MANAGER handling; scrollback
+      even lost on minimize/restore in some cases (#6472, #7074)'
+- id: remote_ssh_integration
+  name: Remote/SSH integration (e.g. kitten ssh)
+  category: session
+  support:
+    contour: 'no'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: No remote-control or ssh-kitten-equivalent feature found (no 'remote control'/'kitten' matches)
+    kitty: docs/kittens/ssh.rst - shell integration bootstrap, terminfo copy, config cloning, forwarded
+      remote-control socket over SSH
+    ghostty: src/cli/ssh.zig ('ghostty +ssh' wraps ssh, auto-installs terminfo, forwards TERM/env); src/cli/ssh_cache.zig;
+      ships in 1.3.x
+    foot: doc/foot.1.scd XTGETTCAP section only discusses avoiding terminfo installation over SSH via
+      escape-sequence querying - no kitten-ssh-like wrapper/session tool exists
+    wezterm: config/src/config.rs ssh_domains; https://wezterm.org/config/lua/config/ssh_domains.html;
+      wezterm connect/ssh CLI
+    gnome-terminal: No built-in remote/SSH session integration; SSH is just an ordinary shell command,
+      no equivalent to kitten ssh documented anywhere in help docs or NEWS
+    konsole: src/plugins/SSHManager/ (reads ~/.ssh/config, one-click connect) + BookmarkHandler.h ssh://
+      bookmark support
+    mintty: docs/mintty.1:4536 — only a user-defined SessionCommands=mybox:ssh mybox launcher; no protocol-level
+      integration like kitten ssh
+    iterm2: 'Shell integration works over ssh (survives to remote hosts); tmux Control Mode (-CC) explicitly
+      markets ''For users who do most of their work in ssh: Restore the environment you had at work when
+      you get home'' (iterm2.com/documentation-tmux-integration.html)'
+    xterm: No dedicated remote/SSH feature; xterm.man has no ssh-specific integration, xterm is simply
+      run with a shell (which may itself invoke ssh)
+    alacritty: No kitten-ssh equivalent; design philosophy defers this to external tools (tmux/mosh)
+- id: multiplexer_built_in
+  name: Built-in multiplexer (detachable, tmux-like)
+  category: session
+  support:
+    contour: 'no'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: partial
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: vtmux is a local, in-process Qt-free tab/split-pane TREE model, not a detachable/remote session
+      multiplexer like tmux
+    kitty: docs/faq.rst:446-452 - kitty states it does what tmux does 'with the exception of remote persistence';
+      remote control (listen_on, definition.py:2293) is local/forwarded IPC to the running GUI process,
+      not a detachable session
+    ghostty: No session/detach subsystem anywhere in src/; tmux referenced only as an external program
+      (Config.zig:1011)
+    foot: 'README.md Server (daemon) mode section: footclient/foot --server share process/fonts for perf,
+      explicitly not a multiplexer (each window independent, no detach/reattach of sessions)'
+    wezterm: wezterm-mux-server/, wezterm-mux-server-impl/; https://wezterm.org/multiplexing.html - detach/reattach
+      over unix/TLS/SSH domains
+    gnome-terminal: Tabs are simple GTK notebook pages with no daemon/session persistence or detach-reattach
+      model comparable to tmux
+    konsole: Splits/tabs are in-process GUI features only; session restore respawns shells via KDE session
+      management rather than a persistent detachable server like tmux/screen
+    mintty: Virtual Tabs are Windows-level switching among separate mintty processes; not a detachable/reattachable
+      multiplexer
+    iterm2: tmux Control Mode (-CC) is not a native built-in multiplexer but a deep GUI wrapper around
+      a real, separate tmux process - detach/reattach and multi-client collaboration work through actual
+      tmux, presented as native iTerm2 windows/tabs (iterm2.com/documentation-tmux-integration.html)
+    xterm: No built-in multiplexer; xterm.man makes no mention of session detach/reattach, relies on external
+      tmux/screen
+    alacritty: FAQ delegates multiplexing to external tools; the Multi-Window feature shares one process/GPU
+      context across independent windows but offers no detach/reattach
+- id: config_format
+  name: Configuration format
+  category: config
+  values:
+    contour: YAML (contour.yml)
+    kitty: Custom key-value kitty.conf
+    ghostty: Custom flat key = value text format
+    foot: INI (foot.ini, [section] key=value)
+    wezterm: Lua (~/.wezterm.lua)
+    gnome-terminal: GSettings/dconf (binary key-value database under the org.gnome.Terminal schema), not
+      a text config file
+    konsole: KConfig INI-style (konsolerc + per-profile .profile files)
+    windows-terminal: unknown
+    mintty: Flat key=value text file (.minttyrc)
+    iterm2: plist (native Preferences); profiles also as Dynamic Profiles JSON/XML
+    xterm: X resources (~/.Xresources, app-defaults / XrmDatabase)
+    alacritty: TOML (alacritty.toml)
+    apple-terminal: unknown
+  evidence:
+    contour: 'memory: ''GUI writes ONLY side files (never contour.yml)''; src/contour/Config.cpp yaml-cpp
+      parsing'
+    kitty: docs/conf.rst; kitty/options/definition.py opt() definitions
+    ghostty: src/config/config-template:1-15; https://ghostty.org/docs/config ('a custom, but very simplistic
+      key = value syntax')
+    foot: foot.ini sample file; doc/foot.ini.5.scd man page
+    wezterm: https://wezterm.org/config/files.html; config/src/config.rs FromDynamic/ToDynamic via luahelper
+    gnome-terminal: GNOME Terminal FAQ (wiki.gnome.org/Apps/Terminal/FAQ) + standard GNOME GSettings/dconf
+      architecture
+    konsole: src/profile/ProfileManager.cpp:22-23,63-71 KConfig/KConfigGroup, .profile suffix at line
+      144
+    mintty: config.template:1-10
+    iterm2: Preferences stored as com.googlecode.iterm2.plist; Dynamic Profiles read from ~/Library/Application
+      Support/iTerm2/DynamicProfiles as JSON/XML/binary plist (iterm2.com/documentation-dynamic-profiles.html)
+    xterm: xterm.man RESOURCES section describes the entire configuration surface as X toolkit resources
+    alacritty: CHANGELOG 0.13.0 — 'Configuration file now uses TOML instead of YAML'
+- id: live_reload
+  name: Live config reload
+  category: config
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Runtime configuration reload''; src/contour/Actions.h actions::ReloadConfig;
+      Config.cpp:498 live-reload path'
+    kitty: kitty/options/definition.py:2410 auto_reload_config; docs/conf.rst:20-22 (also SIGUSR1)
+    ghostty: src/config/Config.zig:3860 (reload), :4361 (reloadConditionals); default keybind ctrl+shift+comma
+      / cmd+shift+comma
+    foot: 'Codeberg issue #711 ''reload foot config'' (requested) and #1653 ''Reloading configuration
+      in foot server mode''; only dark/light theme can be switched live via SIGUSR1/SIGUSR2 (doc/foot.1.scd:704-711),
+      not the full config'
+    wezterm: https://wezterm.org/config/lua/config/automatically_reload_config.html - default true, watches
+      and reloads
+    gnome-terminal: GSettings is a live change-notifying system; most preferences (colors, fonts, scrollback,
+      new-terminal-mode, etc.) apply immediately without restart since the UI binds to GSettings change
+      signals
+    konsole: KonsoleSettings::configChanged wired into MainWindow.cpp:176, ViewContainer.cpp:172-173,
+      TerminalDisplay.cpp:316, ProfileModel.cpp:29
+    mintty: docs/mintty.1:1366-1374 — Options dialog 'Apply' applies changes live to the running instance;
+      no evidence of automatic file-watch reload when editing .minttyrc directly
+    iterm2: Preference changes apply immediately (standard macOS app behavior); Dynamic Profiles are reloaded
+      automatically whenever the DynamicProfiles folder's contents change (iterm2.com/documentation-dynamic-profiles.html)
+    xterm: X resources are read at startup only; xterm.man shows SIGHUP just kills the subprogram (line
+      ~6953/8125), no resource-file reload mechanism. Only a fixed set of options can be toggled live
+      via the Ctrl-click menus
+    alacritty: live_config_reload option, default true — alacritty.org config reference
+- id: gui_settings_panel
+  name: GUI settings panel
+  category: config
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'src/contour/SettingsController.h/.cpp; WT-style settings tab (memory: ''GUI settings page'')'
+    kitty: 'No native settings dialog (all UI is OpenGL-rendered, docs/overview.rst:16); only scoped in-terminal
+      kittens: docs/kittens/choose-fonts.rst and docs/kittens/themes.rst - most config is hand-edited
+      kitty.conf'
+    ghostty: macos/Sources/Features/Settings/SettingsView.swift:15-17 reads 'Coming Soon' and directs
+      the user to edit the file; no GTK preferences dialog found
+    foot: No GUI settings UI; configuration is exclusively via the foot.ini text file and CLI --override
+      flags (doc/foot.1.scd:37)
+    wezterm: No in-app settings UI; Lua-config-only by design; no settings-panel source found under wezterm-gui/src
+    gnome-terminal: Edit > Preferences dialog (per-profile Appearance/Behavior/Command/Encoding tabs,
+      plus Shortcuts editor); no separate advanced/plugin settings app beyond this
+    konsole: src/widgets/EditProfileDialog.cpp, src/settings/GeneralSettings.ui, ProfileSettings.cpp
+    mintty: docs/mintty.1:1366 — graphical Options dialog via context/window menu
+    iterm2: 'Full native Preferences window with 8 categories: General, Appearance, Profiles, Keys, Arrangements,
+      Pointer, Shortcuts, Advanced (iterm2.com/documentation-preferences.html)'
+    xterm: menu.c defines three Ctrl-click popup menus (mainMenu, vtMenu 'VT Options', fontMenu 'VT Fonts')
+      for runtime toggles, but this is not a persistent preferences panel and covers only a subset of
+      settings - most configuration lives in X resource files, not a GUI
+    alacritty: README explicitly lists 'GUI configuration editor' among features NOT provided; config-file
+      only
+- id: per_profile_settings
+  name: Per-profile settings
+  category: config
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: 'no'
+    foot: partial
+    wezterm: partial
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Profiles (grouped customization of: color scheme, login shell, and related
+      behaviors)'''
+    kitty: No first-class Profiles feature; approximated via multiple --config files, session files (docs/sessions.rst)
+      and per-launch overrides (kitty/launch.py); no profile-switch UI/model
+    ghostty: 'No profile concept in Config.zig; only OS/theme gating via src/config/conditional.zig and
+      config-file includes; open feature request (discussion #4109)'
+    foot: doc/foot.1.scd:27-28 -c,--config=PATH selects an alternate config file, and -o,--override overrides
+      individual keys per-launch, but there is no first-class named-profile switcher UI
+    wezterm: 'Domains/launch_menu give per-target program selection; wezterm discussion #2099 - no per-domain
+      appearance overrides (e.g. background colour) yet'
+    gnome-terminal: help.gnome.org documents Profiles (create/rename/delete), each with independent font,
+      color, scrollback, command, and encoding settings
+    konsole: src/profile/Profile.{h,cpp} + ProfileManager .profile files
+    mintty: docs/mintty.1:4512-4539 — SessionCommands= session launcher, e.g. 'mycolours:-C ~/.minttyrc.mycolours',
+      gives named launch presets with distinct configs; not a formal Profiles UI but functionally equivalent
+    iterm2: Profiles are a core, extensively documented iTerm2 feature (iterm2.com/documentation-preferences-profiles.html,
+      dynamic profiles, automatic profile switching)
+    xterm: No named-profile system in xterm.man; configuration is per X resource class/instance or command-line
+      only
+    alacritty: No named/switchable profiles; general.import only composes multiple config files, with
+      no per-window/per-tab profile picker
+- id: theming_colorscheme
+  name: Theming / colour-scheme support
+  category: config
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Color Schemes''; memory: ''GUI theme config (system/dark/light)'''
+    kitty: docs/kittens/themes.rst - 300+ prebuilt themes via 'kitten themes', live preview
+    ghostty: src/config/theme.zig, src/cli/list_themes.zig (built-in theme catalog + theme key); https://ghostty.org/docs/features/theme
+    foot: doc/foot.ini.5.scd:1009-1026 [colors-dark]/[colors-light] sections; switch via color-theme-toggle
+      keybinding or SIGUSR1/SIGUSR2
+    wezterm: config.color_scheme + wezterm.color.get_builtin_schemes(); https://wezterm.org/config/appearance.html
+      (700+ built-in schemes)
+    gnome-terminal: 'Preferences > Colors: built-in scheme presets plus a fully custom 16/256-color palette
+      editor; note background transparency/image was removed in gnome-terminal 3.8 and never restored
+      (GNOME bugzilla #698544)'
+    konsole: src/colorscheme/ColorScheme.cpp, ColorSchemeEditor.h
+    mintty: docs/mintty.1:1466-1496 + themes/ directory — ThemeFile= / ThemeDark=, bundled themes (dracula,
+      gruvbox, ...)
+    iterm2: Color Presets popup menu, import/export .itermcolors files, separate light/dark mode color
+      sets (iterm2.com/documentation-preferences-profiles-colors.html)
+    xterm: xterm.man documents extensive color-related resources (color0-color15/foreground/background/colorUL/colorBD,
+      reverseVideo, -cm, 88/256-color support)
+    alacritty: '[colors] config section; large community colorscheme ecosystem importable via general.import'
+- id: screen_reader_a11y
+  name: Screen-reader / a11y support
+  category: accessibility
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: partial
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: partial
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/contour/display/TerminalAccessible.cpp/.h (QAccessible integration); docs/accessibility.md
+    kitty: 'No a11y code in source tree; kitty GitHub Discussion #9202 confirms no screen-reader integration'
+    ghostty: 'macOS only: SurfaceView_AppKit.swift:2273-2340 (isAccessibilityElement, .textArea role,
+      accessibilityValue/SelectedText/Line - real VoiceOver support). No GtkAccessible/AtkObject implementation
+      under src/apprt/gtk'
+    foot: No 'atspi'/'accessib'/'a11y' matches anywhere in foot source (*.c/*.h) or docs
+    wezterm: 'wezterm issue #913 open since 2021 - ''doesn''t currently have an accessibility story'''
+    gnome-terminal: VTE's GTK4 widget implements GtkAccessibleText (vteaccess-gtk4.h), feeding GTK's AT-SPI
+      bridge so Orca can read terminal content (GTK dev blog 'Accessibility improvements in GTK 4.14')
+    konsole: 'TerminalDisplayAccessible : QAccessibleWidget, QAccessible::Terminal role + TextInterface,
+      TerminalDisplayAccessible.cpp:16,148-150'
+    mintty: No IAccessible/UIA/NotifyWinEvent implementation in src/*.c; src/winmain.c:2308 comment notes
+      the window 'would need to be amended to ensure window accessibility'
+    iterm2: VoiceOver reads screen/typed text and command output (iaccessibility.net review); documented
+      as better than Terminal.app but with known issues in full-screen/curses apps like vim (AppleVis
+      forum discussion)
+    xterm: No accessibility/screen-reader/AT-SPI documentation found in xterm.man or ctlseqs.txt; xterm
+      uses the old Xaw widget toolkit, which lacks an AT-SPI accessibility bridge
+    alacritty: 'No accessibility-API support documented in README/features/config; issue #3855 concerns
+      keyboard-only selection, not AT-SPI/NSAccessibility/UIA. Verdict rests on consistent absence of
+      any a11y claim'
+  notes: 'Accessibility is broadly weak across GPU-native terminals: kitty and wezterm have no screen-reader
+    integration at all (kitty Discussion #9202; wezterm issue #913, open since 2021). ghostty is macOS-only
+    (real VoiceOver support via AppKit''s accessibility protocol) with no Linux/GTK implementation. Konsole
+    (QAccessible) and gnome-terminal/VTE (GTK4 GtkAccessibleText, since GTK 4.14) are the most complete
+    on Linux.'
+- id: caret_reporting
+  name: Caret (cursor) position reporting to a11y APIs
+  category: accessibility
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: partial
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: unknown
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'memory: ''Accessibility caret reporting'' — cursorPositionChanged posted off the blink phase
+      to the GUI thread'
+    kitty: No accessibility-API caret reporting in source; consistent with absent a11y stack (see screen_reader_a11y)
+    ghostty: macOS accessibilitySelectedTextRange()/selectedRange() (SurfaceView_AppKit.swift:1889-1899)
+      answers on demand and posts .selectedTextChanged, but no proactive caret-moved AX notification;
+      nothing on Linux
+    foot: No accessibility caret-position reporting found; no AT-SPI integration exists (see screen_reader_a11y)
+    wezterm: 'wezterm discussion #5354 - maintainer ''Not AFAIR'' re: exposing selection/cursor via macOS
+      Accessibility APIs'
+    gnome-terminal: GtkAccessibleText interface explicitly supports notifying assistive tech of caret-position
+      changes, which VTE's GTK4 accessibility implementation uses (blog.gtk.org/2024/03/08/accessibility-improvements-in-gtk-4-14)
+    konsole: TerminalDisplayAccessible::cursorPosition()/setCursorPosition() (QAccessibleTextInterface),
+      TerminalDisplayAccessible.h:50-51, .cpp:33,139
+    mintty: No UIA caret provider or accessibility caret API code in source
+    iterm2: No documentation found confirming a dedicated NSAccessibility caret-position reporting implementation;
+      VoiceOver's terminal reading behavior may rely on general keystroke echo rather than app-level caret
+      notifications
+    xterm: No accessibility caret-reporting mechanism found; consistent with absence of any a11y support
+    alacritty: Follows from the absence of any accessibility API layer; no evidence of caret reporting
+      found
+  notes: 'Follows the same pattern as screen-reader support: present only where a full a11y stack exists
+    (contour, konsole, gnome-terminal/VTE); ghostty''s caret reporting is macOS-only and on-demand rather
+    than a proactive AX notification.'
+- id: sixel_image_display
+  name: Sixel image display
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Sixel Image support'''
+    kitty: Zero 'sixel' hits across kitty source tree (.c/.h/.py/.rst); kitty uses its own graphics protocol
+      instead
+    ghostty: 'Only an unused DA1 feature-code enum entry (sixel = 4) in src/terminal/device_attributes.zig:53;
+      no decoder/renderer. Maintainers explicitly declined (discussions #2496/#5832/#5886)'
+    foot: 'README.md Features: ''Sixel image support''; doc/foot.ini.5.scd:2093-2094 sixel boolean config
+      option, default enabled'
+    wezterm: term/src/lib.rs:8 'sixel and iTerm2 image support'; features.html lists Sixel (experimental)
+    gnome-terminal: VTE implements Sixel (Vte.Terminal.set_enable_sixel in both gtk3 and gtk4 APIs) but
+      it's an opt-in meson build flag (-Dsixel=true), not enabled in all distro packages by default
+    konsole: Vt102Emulation.cpp SixelModeEnable/Disable (lines 3744-3819); added in Konsole 22.04 / KDE
+      Gear 22.04 (April 2022)
+    mintty: docs/mintty.1:1234-1245; wiki/Changelog.md:2086 — Sixel graphics support added (#572)
+    iterm2: Sixel support since v3.3.0 (arewesixelyet.com; iterm2.com/feature-reporting/)
+    xterm: 'graphics_sixel.c source file; xterm.man numerous sixel resources (sixelScrolling etc, lines
+      ~5516-7291); enabled by default since xterm patch #359 per arewesixelyet.com'
+    alacritty: 'Issue #910 ''Add support for libsixel'' still open; only unofficial forks (ayosec/alacritty)
+      implement it'
+- id: kitty_graphics_protocol
+  name: Kitty graphics protocol support
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: partial
+    windows-terminal: unknown
+    mintty: 'no'
+    iterm2: partial
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/KittyGraphics.h/.cpp/_test.cpp
+    kitty: docs/graphics-protocol.rst - kitty originated this protocol
+    ghostty: src/terminal/kitty/graphics.zig, graphics_exec.zig, graphics_render.zig; src/renderer/image.zig
+    foot: foot only implements the Kitty keyboard protocol (doc/foot-ctlseqs.7.scd:636-649); no APC-based
+      kitty graphics protocol handling found (only sixel is supported for images)
+    wezterm: term/src/terminalstate/kitty.rs; term/src/test/image.rs kitty graphics tests
+    gnome-terminal: No implementation found in VTE source/issue tracker; only Sixel (opt-in) is implemented
+      for image display, unlike Kitty/WezTerm/Konsole
+    konsole: Commit 89101dc5b 'Add partial support for kitty terminal graphics protocol' (2022); Screen.h
+      TerminalGraphicsPlacement_t::Kitty; per KDE MR!594, animation and non-direct transfer modes are
+      unsupported
+    mintty: No mention anywhere; image support is iTerm2 protocol controls + Sixel + ReGIS only (docs/mintty.1:1256-1259)
+    iterm2: '''iTerm2 has code to support the Kitty image protocol, minus animations, at least since v3.5.6''
+      (per codeberg.org/dnkl/foot issue #481 discussion); iTerm2 primarily uses its own proprietary inline-image
+      protocol, and users report rendering artifacts with the Kitty path'
+    xterm: No kitty graphics protocol references found in xterm source or docs; xterm supports only sixel
+      and ReGIS graphics
+    alacritty: Confirmed unsupported by multiple 2025 comparison sources; image-rendering tools (yazi,
+      Neovim image plugins) explicitly cannot render in Alacritty
+- id: notification_support
+  name: Desktop notification support
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: partial
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/DesktopNotification.cpp (OSC 99 desktop notifications)
+    kitty: docs/desktop-notifications.rst:7 OSC 99 desktop notifications; OSC 9 compatibility shorthand
+      documented alongside
+    ghostty: src/terminal/osc.zig:94-95 show_desktop_notification (OSC 9 / OSC 777); 1.3.0 added notify-on-command-finish
+      config keys
+    foot: doc/foot.ini.5.scd:560-614 notify option + [desktop-notifications] section, runs an external
+      notify command on BEL
+    wezterm: term/src/terminalstate/performer.rs:904-913 OSC 9 SystemNotification -> Alert::ToastNotification;
+      rxvt notify OSC at :915-934
+    gnome-terminal: VTE >=0.68 implements OSC 9 desktop notifications; OSC 777 (urxvt-style) historically
+      needed distro-specific patches, and raw BEL is not surfaced as a desktop notification by default
+    konsole: Session.cpp:38,814-826,1154-1155 KNotification (Bell/Silence/Finished) + OSC 99 kitty desktop-notification
+      support, Vt102Emulation.cpp:1322-1570 KittyNotification handling
+    mintty: docs/mintty.1:2799-2822 — bell-triggered taskbar highlight/flash/popup (BellTaskbar, BellFlash,
+      BellPopup); no OS toast/balloon notification carrying message text
+    iterm2: Profiles > Terminal > 'Send Notification Center alerts' for bell/silence/job-completion, plus
+      a proprietary escape sequence and trigger action 'Post Notification' (iterm2.com/documentation-triggers.html,
+      documentation-badges.html)
+    xterm: Only the X11 urgency hint on bell (bellIsUrgent resource / XUrgencyHint, misc.c:278-293, menu.c)
+      which flashes/highlights the window in the WM taskbar - no text-content desktop notification mechanism
+      exists
+    alacritty: 'Issue #7105 ''osc notification support'' open and unimplemented; only a bell.command workaround
+      exists, not native OSC 9 desktop notifications'
+- id: ligature_aware_cursor
+  name: Ligature-aware cursor rendering
+  category: other
+  support:
+    contour: unknown
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: partial
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: No direct evidence found of ligature-aware cursor placement logic; not documented
+    kitty: kitty/options/definition.py:109-121 disable_ligatures 'cursor' mode - suppresses ligature under
+      the cursor for editing
+    ghostty: src/font/shaper/harfbuzz.zig:194-215,420 and coretext.zig:442-470 - explicit handling to
+      keep cursor/glyph placement correct across ligature clusters
+    foot: N/A - ligatures are not rendered at all (CHANGELOG.md:2599), so no ligature-aware cursor logic
+      exists
+    wezterm: 'Cursor renders over full ligature glyph but with known artifacts - wezterm issues #478,
+      #2888, #4874'
+    gnome-terminal: Given ligature rendering itself is broken/'a mess' in VTE's per-cell grid (see font_ligatures),
+      no ligature-aware cursor-positioning logic is documented or evident
+    konsole: TerminalPainter::drawContents draws the cursor background rect first (TerminalPainter.cpp:405-430)
+      then continues the word-mode ligature run across the cursor cell (lines 432-471), so ligature glyphs
+      are not split at the cursor
+    mintty: docs/mintty.1:1980-1986 — LigaturesSupport=2 redisplays the previous cursor line after cursor
+      movement to keep ligature shaping correct
+    iterm2: iTerm2 inserts a dummy empty glyph so the cursor 'functions as though there were two glyphs
+      instead of one' when a ligature (e.g. '==') replaces two characters, keeping cursor placement correct
+      within ligated clusters
+    xterm: N/A - xterm has no ligature rendering at all, so no ligature-aware cursor handling exists
+    alacritty: Follows directly from the absence of ligature support entirely
+- id: blurred_background_transparency
+  name: Blurred background / transparency
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: partial
+    apple-terminal: unknown
+  evidence:
+    contour: 'docs/features.md: ''Blurred behind transparent background...'' and ''Blurrable Background
+      image support''; src/contour/Config.h bool blur; Wayland blur protocol (protocols/blur.xml)'
+    kitty: kitty/options/definition.py:1899 background_opacity, :1931 background_blur (macOS and Wayland
+      where compositor supports the blur extension)
+    ghostty: src/config/Config.zig:1002 background-opacity, :1020-1046 background-blur (Linux support
+      since Ghostty 1.1; macOS + GTK/wlroots; ignored under KDE Plasma)
+    foot: doc/foot.ini.5.scd:1100-1123 alpha/alpha-mode (transparency) and blur option (requires compositor's
+      ext-background-effect-v1 protocol)
+    wezterm: window_background_opacity (cross-platform) + macos_window_background_blur / wayland_window_background_blur
+      / win32_system_backdrop
+    gnome-terminal: 'Background transparency/image support was removed in gnome-terminal 3.8 and never
+      restored (GNOME bugzilla #698544 ''Background configuration is missing in terminal profile editor'');
+      no blur effect exists'
+    konsole: ColorScheme::_blur/setOpacity (ColorScheme.cpp:419-440), MainWindow::setBlur + Qt::WA_TranslucentBackground
+      (MainWindow.cpp:200,1186-1193)
+    mintty: docs/mintty.1:1518-1536 — alpha Transparency= levels supported; true blur ('Glass') is deprecated/Vista-only
+    iterm2: Appearance/Profile preferences include transparency and background blur settings (iterm2.com/documentation-preferences-appearance.html;
+      features.html transparency screenshots); disables the Metal GPU renderer when active
+    xterm: No native alpha/opacity resource found in xterm.man (no equivalent of urxvt's -bg rgba:...);
+      pseudo-transparency is achievable only via external compositors (xcompmgr) acting on the window,
+      not an xterm feature
+    alacritty: window.opacity works cross-platform; window.blur is restricted to macOS and KDE Wayland
+      only per alacritty.org config reference
+- id: tab_colouring
+  name: Tab colouring
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: partial
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: partial
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: 'memory: ''Tab colorization (WT-style)'' — OKLab fade + auto-contrast in TabColorScheme.h'
+    kitty: kitty/rc/set_tab_color.py; kitty/options/definition.py:1841-1846 active_tab_foreground/background;
+      docs/changelog.rst:2498 set-tab-color
+    ghostty: 'macOS only: macos/Sources/Features/Terminal/TerminalTabColor.swift (native tab colour picker,
+      ships 1.3). No GTK/Linux implementation found'
+    foot: N/A - no tabs feature exists at all (see tabs row)
+    wezterm: format-tab-title event + https://wezterm.org/config/lua/config/tab_bar_style.html - per-tab
+      programmatic colour
+    gnome-terminal: No Preferences UI option; only achievable via unsupported custom GTK CSS hacks (~/.config/gtk-3.0/gtk.css
+      tab:active background-color)
+    konsole: Profile::TabColor property (Profile.cpp:102), --tabcolor CLI (Application.cpp:322-356), RenameTabWidget.cpp
+      tabColorCombo
+    mintty: docs/mintty.1:4690-4698 — TabForegroundColour/TabBackgroundColour style the active-tab highlight
+      only, not distinct per-tab colours
+    iterm2: Profiles > Colors > tab-color setting decorates the tab; can also be set dynamically per-session
+      via escape sequence/Python API (iterm2.com/documentation-preferences-profiles-colors.html, python-api/examples/settabcolor.html)
+    xterm: N/A - xterm has no tabs
+    alacritty: No tabs exist, so no tab colouring
+- id: undercurl_styled_underlines
+  name: Undercurl / styled underlines
+  category: other
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: unknown
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'src/vtbackend/CellFlags.h: CurlyUnderlined, DottedUnderline, DashedUnderline flags'
+    kitty: docs/underlines.rst:1-18 - coloured + styled (curly/dotted/dashed/double) underlines via CSI
+      4:n m
+    ghostty: src/terminal/style.zig:352-354 (curly/dotted/dashed, CSI 4:3/4:4/4:5 m), tests at :693-715
+    foot: 'README.md Features: ''Styled and colored underlines'' (links to kitty underlines spec); doc/foot.ini.5.scd:874-876
+      underline styles curly/dotted/dashed'
+    wezterm: wezterm-escape-parser/src/csi.rs:59-71 enum Underline{Single,Double,Curly,Dotted,Dashed}
+    gnome-terminal: 'VTE implements SGR 4:3 curly underline plus SGR 58/59 underline color, coordinated
+      with Kitty''s spec (GNOME bugzilla #721761 ''Please add undercurl support to VTE'', implemented)'
+    konsole: Character.h:116-120 RE_UNDERLINE_{DOUBLE,CURL,DOT,DASH}; SGR 4:x sub-parameter dispatch at
+      Vt102Emulation.cpp:2080; rendered in TerminalPainter.cpp:989-1011
+    mintty: wiki/Changelog.md:1565 — SGR 4:1..4:5 underline styles (solid, double, wavy, dotted, dashed)
+      plus SGR 58/59 underline colour
+    iterm2: 'Undercurl (SGR 4:3) confirmed working since iTerm2 3.5.0beta11; dotted/dashed underline styles
+      added in 3.6.7 (per web search of iTerm2 release history); colored underlines tracked in GitLab
+      issue #6382'
+    xterm: 'charproc.c:4369 ''case 4: /* Underscore */'' only sets a single UNDERLINE flag on/off (plus
+      case 21 doubly-underlined); no colon-subparameter parsing maps SGR 4:3/4:4/4:5 to curly/dotted/dashed
+      styles, and no SGR 58/59 underline-color case exists in charproc.c'
+    alacritty: CHANGELOG 0.11.0 — 'Escape sequence for undercurl, dotted and dashed underlines' plus underline-colour
+      set/reset; double underline added in 0.6.0

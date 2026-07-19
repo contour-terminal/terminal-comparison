@@ -103,6 +103,29 @@ def mode_value(doc: dict, number: int) -> str:
     return "yes" if entry.get("supported") else "no"
 
 
+def all_modes(platforms: list[PlatformRun], keys: list[str]) -> list[tuple[int, str]]:
+    """Every DEC private mode at least one terminal reported as supported.
+
+    Built from the measurements rather than a hand-kept list, so a mode nobody thought
+    to enumerate still appears.  Modes that no terminal supports are dropped: with a
+    full probe the answer set is mostly "not recognised", and a table of empty rows
+    would bury the informative ones.
+    """
+    supported: dict[int, str] = {}
+    for run in platforms:
+        for key in keys:
+            modes = ((run.yamls.get(key) or {}).get("terminal_results") or {}).get("modes") or {}
+            for raw, entry in modes.items():
+                if not (entry or {}).get("supported"):
+                    continue
+                number = int(raw)
+                name = (entry.get("mode_description")
+                        or entry.get("mode_name") or "").strip()
+                if number not in supported or (name and not supported[number]):
+                    supported[number] = name
+    return sorted(supported.items())
+
+
 # --------------------------------------------------------------------------------
 # Markdown
 # --------------------------------------------------------------------------------
@@ -247,11 +270,30 @@ def render_markdown(platforms, caps, vt_features, gui_features) -> str:
     add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
     add("")
 
+    every = all_modes(platforms, keys)
+    if every:
+        add("### Every DEC private mode any terminal supports")
+        add("")
+        add(f"{len(every)} modes, collected from the measurements rather than a "
+            "hand-kept list. Modes that no terminal recognised are omitted.")
+        add("")
+        rows = []
+        for number, name in every:
+            row = [f"`{number}`" + (f" — {name}" if name else "")]
+            for key in keys:
+                doc = next((p.yamls[key] for p in platforms if key in p.yamls), None)
+                row.append(SUPPORT_MARK[mode_value(doc, number)][2] if doc else "?")
+            rows.append(row)
+        add(md_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+        add("")
+
     # ---- curated matrices
     for title, features, blurb in (
         ("VT sequences and extensions (documented)", vt_features,
          "Compiled from each terminal's source tree and documentation rather than "
-         "measured, so it covers terminals this machine cannot run."),
+         "measured, so it also covers terminals this machine cannot run. Where a row "
+         "overlaps the measured tables above -- the DEC mode rows especially -- the two "
+         "were derived independently and can be read against each other."),
         ("GUI and user-facing features (documented)", gui_features,
          "Compiled from official documentation and source."),
     ):
@@ -497,12 +539,32 @@ from 0/158 to 158/158.</p></div>""")
         rows.append(row)
     add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
 
+    every = all_modes(platforms, keys)
+    if every:
+        add("<h3>Every DEC private mode any terminal supports</h3>")
+        add(f'<p class="note">{len(every)} modes, collected from the measurements '
+            "rather than a hand-kept list. Modes that no terminal recognised are "
+            "omitted.</p>")
+        rows = []
+        for number, name in every:
+            label = f"<code>{number}</code>"
+            if name:
+                label += f' <span class="note">{html.escape(name)}</span>'
+            row = [label]
+            for key in keys:
+                doc = next((p.yamls[key] for p in platforms if key in p.yamls), None)
+                row.append(cell(mode_value(doc, number)) if doc else cell("unknown"))
+            rows.append(row)
+        add(html_table(["Mode"] + [BY_KEY[k].name for k in keys], rows))
+
     # ---- curated
     all_keys = [t.key for t in TERMINALS]
     for title, features, blurb in (
         ("VT sequences and extensions", vt_features,
          "Compiled from each terminal's source tree and documentation rather than "
-         "measured, so it also covers terminals this machine cannot run."),
+         "measured, so it also covers terminals this machine cannot run. Where a row "
+         "overlaps the measured tables above -- the DEC mode rows especially -- the two "
+         "were derived independently and can be read against each other."),
         ("GUI and user-facing features", gui_features,
          "Compiled from official documentation and source."),
     ):

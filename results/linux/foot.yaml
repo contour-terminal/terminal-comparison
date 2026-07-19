@@ -1,12 +1,12 @@
 ambiguous_width: 1
-datetime: 2026-07-19 08:44:11 UTC
+datetime: 2026-07-19 08:54:51 UTC
 environment:
   COLORTERM: truecolor
   TERM: foot
 height: 29
 preferred_encoding: UTF-8
 python_version: 3.14.6
-seconds_elapsed: 0.4670437540044077
+seconds_elapsed: 0.4735300600004848
 session_arguments:
   all: false
   limit_category_time: 240.0
@@ -64,6 +64,713 @@ terminal_results:
   kitty_pointer_shapes: false
   kitty_query: false
   modes:
+    1:
+      changeable: true
+      enabled: false
+      mode_description: Cursor Keys Mode
+      mode_name: DECCKM
+      supported: true
+      value: 2
+      value_description: RESET
+    2:
+      changeable: false
+      enabled: false
+      mode_description: ANSI/VT52 Mode
+      mode_name: DECANM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    3:
+      changeable: false
+      enabled: false
+      mode_description: Column Mode
+      mode_name: DECCOLM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    4:
+      changeable: false
+      enabled: false
+      mode_description: Scrolling Mode
+      mode_name: DECSCLM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    5:
+      changeable: true
+      enabled: false
+      mode_description: Screen Mode (light or dark screen)
+      mode_name: DECSCNM
+      supported: true
+      value: 2
+      value_description: RESET
+    6:
+      changeable: true
+      enabled: false
+      mode_description: Origin Mode
+      mode_name: DECOM
+      supported: true
+      value: 2
+      value_description: RESET
+    7:
+      changeable: true
+      enabled: true
+      mode_description: Auto Wrap Mode
+      mode_name: DECAWM
+      supported: true
+      value: 1
+      value_description: SET
+    8:
+      changeable: false
+      enabled: false
+      mode_description: Auto Repeat Mode
+      mode_name: DECARM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    9:
+      changeable: false
+      enabled: false
+      mode_description: Interlace Mode / Mouse X10 tracking
+      mode_name: DECINLM
+      supported: false
+      value: 4
+      value_description: PERMANENTLY_RESET
+    10:
+      changeable: false
+      enabled: false
+      mode_description: Editing Mode / Show toolbar (rxvt)
+      mode_name: DECEDM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    11:
+      changeable: false
+      enabled: false
+      mode_description: Line Transmit Mode
+      mode_name: DECLTM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    12:
+      changeable: true
+      enabled: false
+      mode_description: Katakana Shift Mode / Blinking cursor (xterm)
+      mode_name: DECKANAM
+      supported: true
+      value: 2
+      value_description: RESET
+    13:
+      changeable: false
+      enabled: false
+      mode_description: Space Compression/Field Delimiter Mode / Start blinking cursor
+        (xterm)
+      mode_name: DECSCFDM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    14:
+      changeable: false
+      enabled: false
+      mode_description: Transmit Execution Mode / Enable XOR of blinking cursor control
+        (xterm)
+      mode_name: DECTEM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    16:
+      changeable: false
+      enabled: false
+      mode_description: Edit Key Execution Mode
+      mode_name: DECEKEM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    18:
+      changeable: false
+      enabled: false
+      mode_description: Print Form Feed
+      mode_name: DECPFF
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    19:
+      changeable: false
+      enabled: false
+      mode_description: Printer Extent
+      mode_name: DECPEX
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    20:
+      changeable: false
+      enabled: false
+      mode_description: Overstrike
+      mode_name: OV1
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    21:
+      changeable: false
+      enabled: false
+      mode_description: Local BASIC
+      mode_name: BA1
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    22:
+      changeable: false
+      enabled: false
+      mode_description: Host BASIC
+      mode_name: BA2
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    23:
+      changeable: false
+      enabled: false
+      mode_description: Programmable Keypad
+      mode_name: PK1
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    24:
+      changeable: false
+      enabled: false
+      mode_description: Auto Hardcopy
+      mode_name: AH1
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    25:
+      changeable: true
+      enabled: true
+      mode_description: Text Cursor Enable Mode
+      mode_name: DECTCEM
+      supported: true
+      value: 1
+      value_description: SET
+    27:
+      changeable: false
+      enabled: false
+      mode_description: Proportional Spacing
+      mode_name: DECPSP
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    29:
+      changeable: false
+      enabled: false
+      mode_description: Pitch Select Mode
+      mode_name: DECPSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    30:
+      changeable: false
+      enabled: false
+      mode_description: Show scrollbar (rxvt)
+      mode_name: SHOW_SCROLLBAR_RXVT
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    34:
+      changeable: false
+      enabled: false
+      mode_description: Cursor Right to Left Mode
+      mode_name: DECRLM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    35:
+      changeable: false
+      enabled: false
+      mode_description: Hebrew (Keyboard) Mode / Enable font-shifting functions (rxvt)
+      mode_name: DECHEBM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    36:
+      changeable: false
+      enabled: false
+      mode_description: Hebrew Encoding Mode
+      mode_name: DECHEM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    38:
+      changeable: false
+      enabled: false
+      mode_description: Tektronix 4010/4014 Mode
+      mode_name: DECTEK
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    40:
+      changeable: false
+      enabled: false
+      mode_description: Carriage Return/New Line Mode / Allow 80⇒132 mode (xterm)
+      mode_name: DECCRNLM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    41:
+      changeable: false
+      enabled: false
+      mode_description: Unidirectional Print Mode / more(1) fix (xterm)
+      mode_name: DECUPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    42:
+      changeable: false
+      enabled: false
+      mode_description: National Replacement Character Set Mode
+      mode_name: DECNRCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    43:
+      changeable: false
+      enabled: false
+      mode_description: Graphics Expanded Print Mode
+      mode_name: DECGEPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    44:
+      changeable: false
+      enabled: false
+      mode_description: Graphics Print Color Mode / Turn on margin bell (xterm)
+      mode_name: DECGPCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    45:
+      changeable: true
+      enabled: true
+      mode_description: Graphics Print Color Syntax / Reverse-wraparound mode (xterm)
+      mode_name: DECGPCS
+      supported: true
+      value: 1
+      value_description: SET
+    46:
+      changeable: false
+      enabled: false
+      mode_description: Graphics Print Background Mode / Start logging (xterm)
+      mode_name: DECGPBM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    47:
+      changeable: true
+      enabled: false
+      mode_description: Graphics Rotated Print Mode / Use Alternate Screen Buffer
+        (xterm)
+      mode_name: DECGRPM
+      supported: true
+      value: 2
+      value_description: RESET
+    49:
+      changeable: false
+      enabled: false
+      mode_description: Thai Input Mode
+      mode_name: DECTHAIM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    50:
+      changeable: false
+      enabled: false
+      mode_description: Thai Cursor Mode
+      mode_name: DECTHAICM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    51:
+      changeable: false
+      enabled: false
+      mode_description: Black/White Reversal Mode
+      mode_name: DECBWRM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    52:
+      changeable: false
+      enabled: false
+      mode_description: Origin Placement Mode
+      mode_name: DECOPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    53:
+      changeable: false
+      enabled: false
+      mode_description: VT131 Transmit Mode
+      mode_name: DEC131TM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    55:
+      changeable: false
+      enabled: false
+      mode_description: Bold Page Mode
+      mode_name: DECBPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    57:
+      changeable: false
+      enabled: false
+      mode_description: Greek/N-A Keyboard Mapping Mode
+      mode_name: DECNAKB
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    58:
+      changeable: false
+      enabled: false
+      mode_description: Enter IBM Proprinter Emulation Mode
+      mode_name: DECIPEM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    59:
+      changeable: false
+      enabled: false
+      mode_description: Kanji/Katakana Display Mode
+      mode_name: DECKKDM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    60:
+      changeable: false
+      enabled: false
+      mode_description: Horizontal Cursor Coupling
+      mode_name: DECHCCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    61:
+      changeable: false
+      enabled: false
+      mode_description: Vertical Cursor Coupling Mode
+      mode_name: DECVCCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    64:
+      changeable: false
+      enabled: false
+      mode_description: Page Cursor Coupling Mode
+      mode_name: DECPCCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    65:
+      changeable: false
+      enabled: false
+      mode_description: Business Color Matching Mode
+      mode_name: DECBCMM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    66:
+      changeable: true
+      enabled: false
+      mode_description: Numeric Keypad Mode
+      mode_name: DECNKM
+      supported: true
+      value: 2
+      value_description: RESET
+    67:
+      changeable: false
+      enabled: false
+      mode_description: Backarrow Key Mode
+      mode_name: DECBKM
+      supported: false
+      value: 4
+      value_description: PERMANENTLY_RESET
+    68:
+      changeable: false
+      enabled: false
+      mode_description: Keyboard Usage Mode
+      mode_name: DECKBUM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    69:
+      changeable: false
+      enabled: false
+      mode_description: Vertical Split Screen Mode / DECLRMM - Left Right Margin Mode
+      mode_name: DECVSSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    70:
+      changeable: false
+      enabled: false
+      mode_description: Force Plot Mode
+      mode_name: DECFPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    73:
+      changeable: false
+      enabled: false
+      mode_description: Transmission Rate Limiting
+      mode_name: DECXRLM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    80:
+      changeable: true
+      enabled: false
+      mode_description: Sixel Display Mode
+      mode_name: DECSDM
+      supported: true
+      value: 2
+      value_description: RESET
+    81:
+      changeable: false
+      enabled: false
+      mode_description: Key Position Mode
+      mode_name: DECKPM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    83:
+      changeable: false
+      enabled: false
+      mode_description: 52 line mode (WY-370)
+      mode_name: WY_52_LINE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    84:
+      changeable: false
+      enabled: false
+      mode_description: Erasable/nonerasable WYENAT Off attribute select (WY-370)
+      mode_name: WYENAT_OFF
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    85:
+      changeable: false
+      enabled: false
+      mode_description: Replacement character color (WY-370)
+      mode_name: REPLACEMENT_CHAR_COLOR
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    90:
+      changeable: false
+      enabled: false
+      mode_description: Thai Space Compensating Mode
+      mode_name: DECTHAISCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    95:
+      changeable: false
+      enabled: false
+      mode_description: No Clearing Screen on Column Change Mode
+      mode_name: DECNCSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    96:
+      changeable: false
+      enabled: false
+      mode_description: Right to Left Copy Mode
+      mode_name: DECRLCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    97:
+      changeable: false
+      enabled: false
+      mode_description: CRT Save Mode
+      mode_name: DECCRTSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    98:
+      changeable: false
+      enabled: false
+      mode_description: Auto Resize Mode
+      mode_name: DECARSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    99:
+      changeable: false
+      enabled: false
+      mode_description: Modem Control Mode
+      mode_name: DECMCM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    100:
+      changeable: false
+      enabled: false
+      mode_description: Auto Answerback Mode
+      mode_name: DECAAM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    101:
+      changeable: false
+      enabled: false
+      mode_description: Conceal Answerback Message Mode
+      mode_name: DECCANSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    102:
+      changeable: false
+      enabled: false
+      mode_description: Ignore Null Mode
+      mode_name: DECNULM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    103:
+      changeable: false
+      enabled: false
+      mode_description: Half Duplex Mode
+      mode_name: DECHDPXM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    104:
+      changeable: false
+      enabled: false
+      mode_description: Secondary Keyboard Language Mode
+      mode_name: DECESKM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    106:
+      changeable: false
+      enabled: false
+      mode_description: Overscan Mode
+      mode_name: DECOSCNM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    108:
+      changeable: false
+      enabled: false
+      mode_description: NumLock Mode
+      mode_name: DECNUMLK
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    109:
+      changeable: false
+      enabled: false
+      mode_description: Caps Lock Mode
+      mode_name: DECCAPSLK
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    110:
+      changeable: false
+      enabled: false
+      mode_description: Keyboard LEDs Host Indicator Mode
+      mode_name: DECKLHIM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    111:
+      changeable: false
+      enabled: false
+      mode_description: Framed Windows Mode
+      mode_name: DECFWM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    112:
+      changeable: false
+      enabled: false
+      mode_description: Review Previous Lines Mode
+      mode_name: DECRPL
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    113:
+      changeable: false
+      enabled: false
+      mode_description: Host Wake-Up Mode
+      mode_name: DECHWUM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    114:
+      changeable: false
+      enabled: false
+      mode_description: Alternate Text Color Underline Mode
+      mode_name: DECATCUM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    115:
+      changeable: false
+      enabled: false
+      mode_description: Alternate Text Color Blink Mode
+      mode_name: DECATCBM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    116:
+      changeable: false
+      enabled: false
+      mode_description: Bold and Blink Style Mode
+      mode_name: DECBBSM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    117:
+      changeable: false
+      enabled: false
+      mode_description: Erase Color Mode
+      mode_name: DECECM
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1000:
+      changeable: true
+      enabled: false
+      mode_description: Send Mouse X & Y on button press
+      mode_name: MOUSE_REPORT_CLICK
+      supported: true
+      value: 2
+      value_description: RESET
+    1001:
+      changeable: false
+      enabled: false
+      mode_description: Use Hilite Mouse Tracking
+      mode_name: MOUSE_HILITE_TRACKING
+      supported: false
+      value: 4
+      value_description: PERMANENTLY_RESET
+    1002:
+      changeable: true
+      enabled: false
+      mode_description: Use Cell Motion Mouse Tracking
+      mode_name: MOUSE_REPORT_DRAG
+      supported: true
+      value: 2
+      value_description: RESET
+    1003:
+      changeable: true
+      enabled: false
+      mode_description: Use All Motion Mouse Tracking
+      mode_name: MOUSE_ALL_MOTION
+      supported: true
+      value: 2
+      value_description: RESET
     1004:
       changeable: true
       enabled: false
@@ -72,6 +779,14 @@ terminal_results:
       supported: true
       value: 2
       value_description: RESET
+    1005:
+      changeable: false
+      enabled: false
+      mode_description: Enable UTF-8 Mouse Mode
+      mode_name: MOUSE_EXTENDED_UTF8
+      supported: false
+      value: 4
+      value_description: PERMANENTLY_RESET
     1006:
       changeable: true
       enabled: false
@@ -80,6 +795,278 @@ terminal_results:
       supported: true
       value: 2
       value_description: RESET
+    1007:
+      changeable: true
+      enabled: true
+      mode_description: Enable Alternate Scroll Mode
+      mode_name: ALT_SCROLL_XTERM
+      supported: true
+      value: 1
+      value_description: SET
+    1010:
+      changeable: false
+      enabled: false
+      mode_description: Scroll to bottom on tty output
+      mode_name: SCROLL_ON_TTY_OUTPUT_RXVT
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1011:
+      changeable: false
+      enabled: false
+      mode_description: Scroll to bottom on key press
+      mode_name: SCROLL_ON_KEYPRESS_RXVT
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1014:
+      changeable: false
+      enabled: false
+      mode_description: Enable fastScroll resource
+      mode_name: FAST_SCROLL
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1015:
+      changeable: true
+      enabled: false
+      mode_description: Enable urxvt Mouse Mode
+      mode_name: MOUSE_URXVT
+      supported: true
+      value: 2
+      value_description: RESET
+    1016:
+      changeable: true
+      enabled: false
+      mode_description: Enable SGR Mouse PixelMode
+      mode_name: MOUSE_SGR_PIXELS
+      supported: true
+      value: 2
+      value_description: RESET
+    1021:
+      changeable: false
+      enabled: false
+      mode_description: Bold/italic implies high intensity
+      mode_name: BOLD_ITALIC_HIGH_INTENSITY
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1034:
+      changeable: true
+      enabled: true
+      mode_description: Interpret "meta" key
+      mode_name: META_SETS_EIGHTH_BIT
+      supported: true
+      value: 1
+      value_description: SET
+    1035:
+      changeable: true
+      enabled: true
+      mode_description: Enable special modifiers for Alt and NumLock keys
+      mode_name: MODIFIERS_ALT_NUMLOCK
+      supported: true
+      value: 1
+      value_description: SET
+    1036:
+      changeable: true
+      enabled: true
+      mode_description: Send ESC when Meta modifies a key
+      mode_name: META_SENDS_ESC
+      supported: true
+      value: 1
+      value_description: SET
+    1037:
+      changeable: false
+      enabled: false
+      mode_description: Send DEL from the editing-keypad Delete key
+      mode_name: KP_DELETE_SENDS_DEL
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1039:
+      changeable: false
+      enabled: false
+      mode_description: Send ESC when Alt modifies a key
+      mode_name: ALT_SENDS_ESC
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1040:
+      changeable: false
+      enabled: false
+      mode_description: Keep selection even if not highlighted
+      mode_name: KEEP_SELECTION_NO_HILITE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1041:
+      changeable: false
+      enabled: false
+      mode_description: Use the CLIPBOARD selection
+      mode_name: USE_CLIPBOARD_SELECTION
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1042:
+      changeable: true
+      enabled: true
+      mode_description: Enable Urgency window manager hint when Control-G is received
+      mode_name: URGENCY_ON_CTRL_G
+      supported: true
+      value: 1
+      value_description: SET
+    1043:
+      changeable: false
+      enabled: false
+      mode_description: Enable raising of the window when Control-G is received
+      mode_name: RAISE_ON_CTRL_G
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1044:
+      changeable: false
+      enabled: false
+      mode_description: Reuse the most recent data copied to CLIPBOARD
+      mode_name: REUSE_CLIPBOARD_DATA
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1045:
+      changeable: false
+      enabled: false
+      mode_description: Extended Reverse-wraparound mode (XTREVWRAP2)
+      mode_name: EXTENDED_REVERSE_WRAPAROUND
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1046:
+      changeable: false
+      enabled: false
+      mode_description: Enable switching to/from Alternate Screen Buffer
+      mode_name: ALT_SCREEN_BUFFER_SWITCH
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1047:
+      changeable: true
+      enabled: false
+      mode_description: Use Alternate Screen Buffer
+      mode_name: ALT_SCREEN_BUFFER_XTERM
+      supported: true
+      value: 2
+      value_description: RESET
+    1048:
+      changeable: false
+      enabled: false
+      mode_description: Save cursor as in DECSC
+      mode_name: SAVE_CURSOR_DECSC
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1049:
+      changeable: true
+      enabled: false
+      mode_description: Save cursor as in DECSC and use alternate screen buffer
+      mode_name: ALT_SCREEN_AND_SAVE_CLEAR
+      supported: true
+      value: 2
+      value_description: RESET
+    1050:
+      changeable: false
+      enabled: false
+      mode_description: Set terminfo/termcap function-key mode
+      mode_name: TERMINFO_FUNC_KEY_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1051:
+      changeable: false
+      enabled: false
+      mode_description: Set Sun function-key mode
+      mode_name: SUN_FUNC_KEY_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1052:
+      changeable: false
+      enabled: false
+      mode_description: Set HP function-key mode
+      mode_name: HP_FUNC_KEY_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1053:
+      changeable: false
+      enabled: false
+      mode_description: Set SCO function-key mode
+      mode_name: SCO_FUNC_KEY_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1060:
+      changeable: false
+      enabled: false
+      mode_description: Set legacy keyboard emulation, i.e, X11R6
+      mode_name: LEGACY_KBD_X11R6
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1061:
+      changeable: false
+      enabled: false
+      mode_description: Set VT220 keyboard emulation
+      mode_name: VT220_KBD_EMULATION
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1070:
+      changeable: true
+      enabled: true
+      mode_description: Use private color registers for each graphic
+      mode_name: SIXEL_PRIVATE_PALETTE
+      supported: true
+      value: 1
+      value_description: SET
+    1243:
+      changeable: false
+      enabled: false
+      mode_description: Arrow keys swapping (BiDi)
+      mode_name: BIDI_ARROW_KEY_SWAPPING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    1337:
+      changeable: false
+      enabled: false
+      mode_description: Report Key Up
+      mode_name: ITERM2_REPORT_KEY_UP
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2001:
+      changeable: false
+      enabled: false
+      mode_description: Enable readline mouse button-1
+      mode_name: READLINE_MOUSE_BUTTON_1
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2002:
+      changeable: false
+      enabled: false
+      mode_description: Enable readline mouse button-2
+      mode_name: READLINE_MOUSE_BUTTON_2
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2003:
+      changeable: false
+      enabled: false
+      mode_description: Enable readline mouse button-3
+      mode_name: READLINE_MOUSE_BUTTON_3
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
     2004:
       changeable: true
       enabled: false
@@ -88,6 +1075,22 @@ terminal_results:
       supported: true
       value: 2
       value_description: RESET
+    2005:
+      changeable: false
+      enabled: false
+      mode_description: Enable readline character-quoting
+      mode_name: READLINE_CHARACTER_QUOTING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2006:
+      changeable: false
+      enabled: false
+      mode_description: Enable readline newline pasting
+      mode_name: READLINE_NEWLINE_PASTING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
     2026:
       changeable: true
       enabled: false
@@ -104,6 +1107,30 @@ terminal_results:
       supported: true
       value: 1
       value_description: SET
+    2028:
+      changeable: false
+      enabled: false
+      mode_description: Text reflow
+      mode_name: TEXT_REFLOW
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2029:
+      changeable: false
+      enabled: false
+      mode_description: Passive Mouse Tracking
+      mode_name: PASSIVE_MOUSE_TRACKING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2030:
+      changeable: false
+      enabled: false
+      mode_description: Report grid cell selection
+      mode_name: REPORT_GRID_CELL_SELECTION
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
     2031:
       changeable: true
       enabled: false
@@ -120,6 +1147,22 @@ terminal_results:
       supported: true
       value: 2
       value_description: RESET
+    2500:
+      changeable: false
+      enabled: false
+      mode_description: Mirror box drawing characters
+      mode_name: MIRROR_BOX_DRAWING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    2501:
+      changeable: false
+      enabled: false
+      mode_description: BiDi autodetection
+      mode_name: BIDI_AUTODETECTION
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
     5522:
       changeable: false
       enabled: false
@@ -128,6 +1171,182 @@ terminal_results:
       supported: false
       value: 0
       value_description: NOT_RECOGNIZED
+    7700:
+      changeable: false
+      enabled: false
+      mode_description: Ambiguous width reporting
+      mode_name: AMBIGUOUS_WIDTH_REPORTING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7711:
+      changeable: false
+      enabled: false
+      mode_description: Scroll markers (prompt start)
+      mode_name: SCROLL_MARKERS
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7723:
+      changeable: false
+      enabled: false
+      mode_description: Rewrap on resize
+      mode_name: REWRAP_ON_RESIZE_MINTTY
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7727:
+      changeable: false
+      enabled: false
+      mode_description: Application escape key mode
+      mode_name: APPLICATION_ESCAPE_KEY
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7728:
+      changeable: false
+      enabled: false
+      mode_description: Send ^\ instead of the standard ^[ for the ESC key
+      mode_name: ESC_KEY_SENDS_BACKSLASH
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7730:
+      changeable: false
+      enabled: false
+      mode_description: Graphics position
+      mode_name: GRAPHICS_POSITION
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7765:
+      changeable: false
+      enabled: false
+      mode_description: Alt-modified mousewheel mode
+      mode_name: ALT_MODIFIED_MOUSEWHEEL
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7766:
+      changeable: false
+      enabled: false
+      mode_description: Show/hide scrollbar
+      mode_name: SHOW_HIDE_SCROLLBAR
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7767:
+      changeable: false
+      enabled: false
+      mode_description: Font change reporting
+      mode_name: FONT_CHANGE_REPORTING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7780:
+      changeable: false
+      enabled: false
+      mode_description: Graphics position
+      mode_name: GRAPHICS_POSITION_2
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7783:
+      changeable: false
+      enabled: false
+      mode_description: Shortcut key mode
+      mode_name: SHORTCUT_KEY_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7786:
+      changeable: false
+      enabled: false
+      mode_description: Mousewheel reporting
+      mode_name: MOUSEWHEEL_REPORTING
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7787:
+      changeable: false
+      enabled: false
+      mode_description: Application mousewheel mode
+      mode_name: APPLICATION_MOUSEWHEEL
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    7796:
+      changeable: false
+      enabled: false
+      mode_description: BiDi on current line
+      mode_name: BIDI_CURRENT_LINE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    8200:
+      changeable: false
+      enabled: false
+      mode_description: Terminal-to-Computer Talk-back Handler
+      mode_name: TTCTH
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    8452:
+      changeable: true
+      enabled: false
+      mode_description: Sixel scrolling leaves cursor to right of graphic
+      mode_name: SIXEL_SCROLLING_LEAVES_CURSOR
+      supported: true
+      value: 2
+      value_description: RESET
+    8800:
+      changeable: false
+      enabled: false
+      mode_description: enable/disable character mapping service
+      mode_name: CHARACTER_MAPPING_SERVICE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    8840:
+      changeable: false
+      enabled: false
+      mode_description: Treat ambiguous width characters as double-width
+      mode_name: AMBIGUOUS_WIDTH_DOUBLE_WIDTH
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    9001:
+      changeable: false
+      enabled: false
+      mode_description: win32-input-mode
+      mode_name: WIN32_INPUT_MODE
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    19997:
+      changeable: false
+      enabled: false
+      mode_description: Handle Ctrl-C/Ctrl-Z mode
+      mode_name: KITTY_HANDLE_CTRL_C_Z
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    77096:
+      changeable: false
+      enabled: false
+      mode_description: BiDi
+      mode_name: MINTTY_BIDI
+      supported: false
+      value: 0
+      value_description: NOT_RECOGNIZED
+    737769:
+      changeable: true
+      enabled: true
+      mode_description: Input Method Editor (IME) mode
+      mode_name: INPUT_METHOD_EDITOR
+      supported: true
+      value: 1
+      value_description: SET
   number_of_colors: 16777216
   osc52_clipboard: true
   osc52_detection:

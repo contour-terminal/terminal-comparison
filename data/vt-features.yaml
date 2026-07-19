@@ -1,0 +1,1547 @@
+- id: sixel
+  name: Sixel graphics
+  category: graphics
+  sequence: DCS Pmacro ; Pback ; Pgrid q ... sixel-data ST
+  spec: https://vt100.net/docs/vt3xx-gp/chapter14.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: partial
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/SixelParser.h/.cpp, Color.h DEC-HLS conversion, Image.h
+    kitty: no sixel decoder anywhere under kitty/kitty/*.c; kitty deliberately implements its own graphics
+      protocol instead of Sixel
+    ghostty: no sixel.zig or decoder in src/terminal/; device_attributes.zig lists a `sixel` DA enum value
+      but nothing consumes it to report support, and the terminal has no Sixel parser
+    foot: dcs.c includes sixel.h and dispatches to sixel_init()/sixel_unhook(), gated by term->conf->tweak.sixel;
+      README advertises Sixel image support
+    wezterm: term/src/terminalstate/sixel.rs
+    gnome-terminal: 'VTE gitlab.gnome.org/GNOME/vte issue #253 tracks Sixel; implemented behind the `-Dsixel=true`
+      Meson build flag, exposed in GNOME Terminal as Preferences > Compatibility > Enable Sixel Images;
+      many distro packages ship it built without the flag or disabled by default'
+    konsole: src/Vt102Emulation.cpp processSixel()/m_SixelPictureDefinition, src/Screen.h TerminalGraphicsPlacement_t::Sixel
+    windows-terminal: src/terminal/adapter/SixelParser.hpp/.cpp, wired into AdaptDispatch (adaptDispatch.cpp
+      _sixelParser)
+    mintty: src/sixel.c, src/sixel_hls.c
+    iterm2: sources/VT100/VT100Terminal.m includes sixel.h, has a sixelDisplayMode property, a DCS_SIXEL
+      token case (~line 3102) that forwards to terminalAppendSixelData:, and executeSetRequestSixelGeometry:;
+      supported since v3.3 per vendor release notes
+    xterm: graphics_sixel.c/.h in xterm-406, the origin of the sequence
+    alacritty: 'github.com/alacritty/alacritty issue #910 (open, unimplemented) and PR #4763 (graphics
+      support, declined/unmerged by maintainers); no sixel code in mainline alacritty'
+  notes: GNOME Terminal/VTE support is real but opt-in at build time, so most distro binaries ship without
+    it. Kitty and Ghostty deliberately do not implement Sixel, favoring their own graphics protocols;
+    Alacritty's maintainers have repeatedly declined graphics support.
+- id: iterm2_inline_images
+  name: iTerm2 inline images (OSC 1337 File=)
+  category: graphics
+  sequence: 'OSC 1337 ; File = [args] : base64-data ST'
+  spec: https://iterm2.com/documentation-images.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: unknown
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'no'
+    mintty: unknown
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h ITERM2 = OSC(1337, ...); src/vtbackend/Screen.cpp processITerm2()/renderITerm2InlineImage()
+      actually decodes and displays the image (not just a capability stub)
+    kitty: kitty/kitty/vt-parser.c case 1337 and kitty/window.py osc_1337() only implement `SetUserVar`;
+      File/FileEnd/FilePart/MultipartFile are not handled at all — kitty pushes its own graphics protocol
+      instead
+    ghostty: src/terminal/osc/parsers/iterm2.zig explicitly routes .File/.FileEnd/.FilePart/.MultipartFile
+      to the 'unimplemented OSC 1337' branch (log.debug + parser.command = .invalid); only CurrentDir
+      (OSC7-equivalent) and a few other keys are implemented
+    wezterm: term/src/terminalstate/iterm.rs
+    gnome-terminal: no OSC 1337/iTerm2 image handling found in VTE; not in any supported-terminal comparison
+      for this protocol
+    konsole: src/Vt102Emulation.h Image = 1337 token, src/Vt102Emulation.cpp special-cases "1337;File=:"
+      / "1337;FilePart=" and calls addPlacement(..., TerminalGraphicsPlacement_t::iTerm, ...)
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp AdaptDispatch::DoITerm2Action only implements
+      the `SetMark` action (shell-integration marks) behind Feature_ScrollbarMarks; any other action (including
+      File=) falls through to _api.UnknownSequence()
+    iterm2: native/originating implementation
+    xterm: no OSC 1337 handling found anywhere in xterm-406 sources
+    alacritty: no OSC 1337 image handling in mainline; only available via the unmerged ayosec/alacritty
+      graphics fork
+  notes: Ghostty explicitly logs OSC 1337 File= as unimplemented in its iterm2.zig OSC parser as of this
+    checkout — it is not a rendering gap, the code path is a stub. Windows Terminal's OSC 1337 support
+    is unrelated to images (shell-integration marks only).
+- id: kitty_graphics_protocol
+  name: Kitty graphics protocol
+  category: graphics
+  sequence: APC G <key>=<value>,... ; <payload> ST
+  spec: https://sw.kovidgoyal.net/kitty/graphics-protocol/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'no'
+    mintty: unknown
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Screen.h replyKittyGraphics()/renderKittyImage()/deleteKittyGraphics(), kitty_graphics::Command;
+      src/vtbackend/KittyGraphics_test.cpp
+    kitty: kitty/kitty/graphics.c, graphics.h, parse-graphics-command.h, graphics_vertex.glsl/graphics_fragment.glsl
+      — the protocol's origin
+    ghostty: src/terminal/kitty/graphics.zig, graphics_command.zig, graphics_exec.zig, graphics_image.zig,
+      graphics_render.zig, graphics_storage.zig, graphics_unicode.zig, plus a public C API in include/ghostty/vt/kitty_graphics.h
+    foot: no kitty-graphics code found anywhere in the tree (0 matches for 'kitty' in vt.c); foot deliberately
+      implements only Sixel, not the kitty graphics protocol
+    wezterm: term/src/terminalstate/kitty.rs, wezterm-escape-parser/src/apc.rs
+    gnome-terminal: 'not in any current supported-terminal list for the protocol; no matching code in
+      VTE gitlab tracker beyond unrelated kitty-keyboard-protocol issue #2601'
+    konsole: src/Vt102Emulation.cpp comment '... konsole does process some APCs (kitty images)' at apc_put(),
+      src/Screen.h TerminalGraphicsPlacement_t::Kitty
+    windows-terminal: no kitty-graphics code found in src/terminal/adapter or src/terminal/parser
+    iterm2: absent from current (2024-2025) supported-terminal comparisons for the protocol; open unresolved
+      feature request gitlab.com/gnachman/iterm2/-/issues/7825
+    xterm: no kitty-graphics code in xterm-406
+    alacritty: not in supported-terminal list (kitty, wezterm, wayst, konsole); no code in mainline alacritty
+  notes: Foot's non-support is a deliberate upstream design decision (Sixel only), not an oversight —
+    see codeberg.org/dnkl/foot/issues/481.
+- id: regis
+  name: ReGIS vector graphics
+  category: graphics
+  sequence: DCS Pmode p ... ST
+  spec: https://en.wikipedia.org/wiki/ReGIS
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/regis/ (ReGISParser, ReGISContext, ReGISRasterizer, ReGISFont, ReGISTextRasterizer,
+      ReGISColor, ReGISTables); Functions.h REGIS = detail::DCS(..., 'p', VTType::VT330, ...)
+    kitty: no ReGIS code; the only 'regis' hits in the tree are unrelated words (register/registration)
+    ghostty: no ReGIS code; only unrelated 'register' hits
+    foot: no ReGIS code found anywhere in the tree
+    wezterm: no ReGIS code; only unrelated 'register'/'iterm2' hits
+    gnome-terminal: no known implementation; not tracked in any VTE issue found
+    konsole: no ReGIS code found
+    windows-terminal: no ReGIS code found in src/terminal
+    mintty: no ReGIS code found (only unrelated hits in po/config files)
+    iterm2: 'unimplemented per open feature request gitlab.com/gnachman/iterm2/-/issues/3543 (''Feature
+      Request: Sixel & ReGis support'')'
+    xterm: graphics_regis.c / graphics_regis.h in xterm-406
+    alacritty: 'unimplemented per github.com/alacritty/alacritty issue #8428'
+  notes: 'ReGIS is effectively a two-terminal feature today: xterm (VT330/340 heritage) and Contour, which
+    built a fairly complete rasterizer including its own font/text renderer for ReGIS canvases.'
+- id: mode_2027_grapheme_clustering
+  name: DEC mode 2027 (grapheme clustering)
+  category: unicode
+  sequence: CSI ? 2027 h / l
+  spec: https://github.com/contour-terminal/terminal-unicode-core
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: partial
+    mintty: partial
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h (DECMode::Unicode -> 2027), Screen.cpp late-codepoint width-revision
+      logic, Settings.h graphemeClustering default
+    kitty: 'kitty/modes.h has no 2027 entry, and vt-parser.c/screen.c never reference it -- kitty does
+      NOT implement the CSI ?2027h/l negotiation. It performs full Unicode-16 grapheme segmentation unconditionally
+      instead (docs/changelog.rst 0.42.0: ''Behavior change: Now kitty does full grapheme segmentation
+      following the Unicode 16 spec... :iss:8533'')'
+    ghostty: src/terminal/modes.zig:297 grapheme_cluster=2027; src/terminal/Terminal.zig has real cluster-width-revision
+      logic and dedicated tests (e.g. 'VS16 to make wide character with mode 2027')
+    foot: 'foot/csi.c: case 2027 appears in the set (line 562), query (663), save (711) and restore (756)
+      mode handlers'
+    wezterm: wezterm-escape-parser/src/csi.rs:949 GraphemeClustering = 2027
+    gnome-terminal: GNOME/vte src/modes.py:1054 declares mode_WHAT('CONTOUR_UNICODE_CORE', 2027, ...)
+      for DECRQM bookkeeping, but a GitHub code search over the whole repo finds zero other references
+      to that symbol -- no behavioral hookup exists
+    konsole: no reference to 2027 anywhere in konsole/src (checked Vt102Emulation.cpp and the whole tree)
+    windows-terminal: src/terminal/adapter/DispatchTypes.hpp:548 GCM_GraphemeClusterMode=DECPrivateMode(2027);
+      adaptDispatch.cpp:1891,2032-2033 implements it, but adapterTest.cpp's RequestPermanentModeTests
+      proves ResetMode is a no-op and DECRQM always answers ';3$y' (permanently set) -- grapheme clustering
+      cannot be turned off
+    mintty: 'src/termout.c:2741 ''when 2027 or 7769: /* Emoji 2-cell width mode */ term.emoji_width =
+      state;'' -- mintty reuses the number 2027 for a narrower, different feature (toggling emoji to 2
+      cells wide), not the terminal-unicode-core late-codepoint-revision semantics'
+    iterm2: no case for 2027 in sources/VT100/VT100Terminal.m (grepped the full mode-switch); GitHub code
+      search over the repo for the mode found nothing relevant
+    xterm: no match for 2027 (or 'grapheme') anywhere in xterm-406 source or ctlseqs.txt
+    alacritty: alacritty/vte src/ansi.rs NamedPrivateMode enum (its central mode registry) tops out at
+      SyncUpdate=2026; no Grapheme variant exists
+  notes: 'kitty, Windows Terminal and mintty each reuse the wire compatibility surface without implementing
+    the real negotiable-mode semantics: kitty is always-on with no mode at all, WT is always-on but answers
+    DECRQM correctly as permanent, and mintty repurposes the number for plain emoji-width toggling. Independently
+    corroborated by measurement: kitty does full grapheme segmentation unconditionally (its ZWJ handling
+    scores 100%), but a live DECRQM probe against kitty reports mode 2027 as unsupported -- confirming
+    there is no negotiation, only always-on behavior.'
+- id: mode_2026_synchronized_output
+  name: DEC mode 2026 (synchronized/batched output)
+  category: unicode
+  sequence: CSI ? 2026 h / l
+  spec: https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:830-835 DECMode::BatchedRendering=36 mapped to mode 2026 at :1354;
+      Terminal.h:120 checks it
+    kitty: 'kitty/modes.h:86 #define PENDING_UPDATE (2026 << 5)'
+    ghostty: src/terminal/modes.zig:296 synchronized_output=2026; src/terminal/Parser.zig has a matching
+      parser test
+    foot: 'foot/csi.c: case 2026 in set (555), query (662), save (710) and restore (755) mode handlers'
+    wezterm: wezterm-escape-parser/src/csi.rs:955 SynchronizedOutput = 2026, with a round-trip parser
+      test at parser/mod.rs:1003-1004
+    gnome-terminal: GNOME/vte src/modes.py:1050 declares mode_WHAT('CONTOUR_BATCHED_RENDERING', 2026,
+      ...) for DECRQM bookkeeping only; a GitHub code search finds zero other references -- no batching
+      behavior is implemented
+    konsole: 'src/Vt102Emulation.cpp:2354-2355 -- case token_csi_pr(''h'',2026): setMode(MODE_SynchronizedUpdate);
+      (mislabeled ''//ITERM2'' in a comment, but functionally correct)'
+    windows-terminal: src/terminal/adapter/DispatchTypes.hpp:547 SO_SynchronizedOutput=DECPrivateMode(2026);
+      src/renderer/base/renderer.cpp:514-522 has real throttled-render logic keyed off it
+    mintty: 'src/termout.c:2733-2738 ''when 2026: term.suspend_update = state ? 150 : 0;'' -- a bounded
+      (150ms-capped) suspend of screen updates, plus a do_update()+flush on reset'
+    iterm2: sources/VT100/VT100Terminal.m:988-990 sets self.synchronizedUpdates on CSI ?2026h/l, and :5620-5621
+      answers DECRQM correctly
+    xterm: no match for 2026 anywhere in xterm-406 source or ctlseqs.txt -- xterm has not adopted this
+      mode
+    alacritty: alacritty/vte src/ansi.rs:967 NamedPrivateMode::SyncUpdate=2026, commented '/* The mode
+      is handled automatically by [Processor] */'; alacritty_terminal/src/event_loop.rs implements the
+      actual batching with a timeout-bounded PTY read (so a misbehaving app can't freeze the display forever)
+  notes: Widely adopted; xterm and VTE/GNOME Terminal are the two holdouts among the twelve. VTE has the
+    mode number catalogued for correct DECRQM bookkeeping but never wires it to rendering.
+- id: kitty_text_sizing_osc66
+  name: Kitty text-sizing protocol (OSC 66)
+  category: unicode
+  sequence: OSC 66 ; key=value:... ; text ST
+  spec: https://sw.kovidgoyal.net/kitty/text-sizing-protocol/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: partial
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/TextSizing.h implements the full field set (s=scale, w=width, n/d=fractional
+      scale, v/h=alignment), not just vertical scale; Screen.h:245 lays out the request; CellFlags.h/LineSoA.h/CellProxy.h
+      carry the per-cell scale
+    kitty: kitty/parse-multicell-command.h, kitty/screen.c, kitty/line.c implement multicell/text-sizing
+      directly; docs/text-sizing-protocol.rst is the spec source
+    ghostty: src/terminal/osc/parsers/kitty_text_sizing.zig is a dedicated parser for OSC 66
+    foot: foot/osc.c:1508-1509 dispatches 'case 66' to kitty_text_size(), but osc.c:1201 explicitly comments
+      'we don't support any other parameters of the text-sizing protocol' -- a narrower subset
+    wezterm: no match for OSC 66 / text-sizing / kitty_text_size anywhere in the wezterm source tree
+    gnome-terminal: GitHub code search over GNOME/vte for 'OSC 66'/'text_sizing'/'multicell' returns no
+      real hits (the one 'multicell' hits are about ordinary CJK double-width fragments, unrelated to
+      the protocol)
+    konsole: no reference to the text-sizing protocol or OSC 66 anywhere in konsole/src
+    windows-terminal: no OSC 66 / text-sizing handler found in the OutputStateMachineEngine / adaptDispatch
+      sources
+    mintty: src/termout.c's OSC dispatch table only advertises Sixel, hyperlinks (OSC 8) and file/image
+      support in its DA-like feature string; no OSC 66 handling found
+    iterm2: GitHub code search over gnachman/iTerm2 for 'OSC 66' returns zero hits
+    xterm: no match for OSC 66 / text-sizing in xterm-406 source or ctlseqs.txt
+    alacritty: alacritty/vte src/ansi.rs has no OSC 66 / multicell / text-sizing handling
+  notes: This is a 2024/2025-era kitty-originated protocol; outside kitty, only ghostty and Contour implement
+    it fully, and foot implements a deliberately reduced subset.
+- id: decdwl_decdhl
+  name: DECDWL / DECDHL (double-width / double-height lines)
+  category: unicode
+  sequence: 'ESC # 6 (DECDWL), ESC # 3 / ESC # 4 (DECDHL top/bottom)'
+  spec: https://vt100.net/docs/vt510-rm/DECDHL.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:619-621 registers DECDHL_Bottom, DECDHL_Top, DECDWL as ESC sequences
+    kitty: 'kitty/vt-parser.c:334 (esc_dispatch''s ''#'' case) only handles ch==''8'' (DECALN); anything
+      else, including ''3''/''4''/''6'', falls to ''REPORT_ERROR("Unhandled Esc # code...")'' -- confirmed
+      unimplemented'
+    ghostty: src/terminal/stream.zig's ESC-with-'#'-intermediate handling (~line 2486) only implements
+      '8' (DECALN); everything else hits logUnsupportedOnce('unimplemented ESC action')
+    foot: foot/vt.c:573-586, the private='#' case in action_esc_dispatch, only has a 'case 8' (DECALN)
+      branch -- no case for '3','4','6'
+    wezterm: wezterm-escape-parser/src/esc.rs:90-97 defines DecDoubleHeightTopHalfLine/BottomHalfLine/DecDoubleWidthLine;
+      wezterm-surface/src/lib.rs:433-435 wires them to real line.set_double_height_top/bottom/set_double_width
+      calls
+    gnome-terminal: GNOME/vte src/vteseq.cc has Terminal::DECDHL_BH/DECDHL_TH/DECDWL handlers, but each
+      body is empty with the comment 'Probably not worth implementing' (src/parser-seq.py also flags them
+      Flags.NOP) -- syntactically recognized, behaviorally a no-op
+    konsole: src/Vt102Emulation.cpp:2021-2036 -- token_esc_de('3')/('4')/('5')/('6') implement double-height
+      top/bottom, single-width/height reset, and double-width, respectively
+    windows-terminal: src/buffer/out/textBuffer.cpp:2441-2442 maps LineRendition::DoubleHeightTop/Bottom
+      to '\x1b#3'/'\x1b#4'; src/host/ut_host/ScreenBufferTests.cpp:8124-8126 has dedicated DECDWL/DECDHL
+      tests
+    mintty: src/termout.c:2121-2134 implements CPAIR('#','3')/('#','4')/('#','6') for DECDHL top/bottom
+      and DECDWL
+    iterm2: sources/VT100/VT100Terminal.m and VT100Screen.m implement DECDHL (35 source hits across the
+      tree, including dedicated tests in ModernTests/iTermLineAttributeTests.swift)
+    xterm: xterm-406/doublechr.c:108-138 (xterm_DECDHL, xterm_DECDWL) plus VTPrsTbl.c dispatch table entries
+      CASE_DECDHL/CASE_DECDWL
+    alacritty: alacritty/vte src/ansi.rs:1814 -- the only '#'-intermediate ESC handled is (b'8',[b'#'])
+      => self.handler.decaln(); no case for '3'/'4'/'6' exists anywhere in the crate
+  notes: 'A genuine three-way split: xterm/Windows Terminal/mintty/Konsole/iTerm2 keep this VT100-era
+    feature; every GPU-accelerated 2020s terminal in this set (kitty, ghostty, foot, alacritty) has dropped
+    it outright; wezterm and Contour are the exceptions that still render it. VTE recognizes the syntax
+    (so it won''t desync the parser) but the handlers are intentionally empty.'
+- id: kitty_keyboard_protocol
+  name: Kitty keyboard protocol
+  category: input
+  sequence: CSI > Ps u (push) / CSI < Ps u (pop) / CSI = Ps ; Ps u (set) / CSI ? u (query)
+  spec: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:58-61,712-715 (CSIUENHCE/CSIUENTER/CSIULEAVE/CSIUQUERY); src/vtbackend/Screen.cpp:6723-6753
+      dispatch
+    kitty: kitty/docs/keyboard-protocol.rst (kitty invented the protocol)
+    ghostty: src/input/kitty.zig, src/input/key_encode.zig
+    foot: doc/foot-ctlseqs.7.scd 'kitty' push/pop/query/update entries; input.c
+    wezterm: docs/config/lua/config/enable_kitty_keyboard.md; wezterm-escape-parser/src/csi.rs; termwiz/src/input.rs
+    konsole: src/KittyKeyMap.h (Legacy/CSI_u/Plain key-type table) referenced from Vt102Emulation.cpp
+    windows-terminal: src/terminal/adapter/ut_adapter/kittyKeyboardProtocol.cpp; adaptDispatch.cpp:2078-2110
+      SetKittyKeyboardProtocol/PushKittyKeyboardProtocol/QueryKittyKeyboardProtocol
+    gnome-terminal: https://gitlab.gnome.org/GNOME/vte/-/issues/2601 (open feature request, MR!14 unmerged
+      as of this check); no kitty-protocol dispatch found in current src/modes.py or parser sources
+    alacritty: 'alacritty_terminal/src/term/mod.rs TermMode::DISAMBIGUATE_ESC_CODES/REPORT_EVENT_TYPES/REPORT_ALTERNATE_KEYS/REPORT_ALL_KEYS_AS_ESC/REPORT_ASSOCIATED_TEXT
+      bitflags; PR #7125'
+    mintty: 'mintty/wiki/Changelog.md only mentions ''kitty'' re: an unrelated unscroll sequence and SGR
+      58/59 underline colour; no keyboard-protocol code found in src/'
+    iterm2: https://gitlab.com/gnachman/iterm2/-/issues/10017 'Implement Kitty's keyboard protocol' is
+      an OPEN feature request; iTerm2's own CSI-u doc says only 'applications should implement the Kitty
+      key reporting protocol instead' without claiming iTerm2 does
+    xterm: no kitty-keyboard/progressive-enhancement hits anywhere in xterm-406 source; well-known that
+      xterm (Thomas Dickey) has not adopted it
+  notes: wezterm gates it behind an opt-in config flag (enable_kitty_keyboard), off by default. mintty
+    and xterm have no evidence of support anywhere in source. iTerm2 has an OPEN GitLab feature request
+    (#10017 'Implement Kitty's keyboard protocol') contradicting some blog posts that list it as supported
+    -- verify before publishing.
+- id: modify_other_keys
+  name: xterm modifyOtherKeys
+  category: input
+  sequence: CSI > 4 ; Pv m (set), CSI ? 4 m (query); reported keys use CSI27;mod;codepoint~ or CSI codepoint;mod
+    u
+  spec: https://invisible-island.net/xterm/modified-keys.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:262,817 (MODIFYOTHERKEYS, CSI > Pm m); src/vtbackend/InputGenerator.h:655-659
+      setModifyOtherKeys/modifyOtherKeys; src/vtbackend/Screen.cpp:6723
+    kitty: kitty/kitty/screen.c:1825-1836 screen_modify_other_keys() -- parses the sequence but its body
+      only logs a warning telling the app to use the kitty keyboard protocol instead; it stores nothing
+    ghostty: src/input/key_encode.zig:33-50,321-445 modify_other_keys_state_2 fully implemented (xterm
+      mode 2 + fixterms)
+    foot: input.c:922-973 modify_other_keys_2 / MOD_MODIFY_OTHER_KEYS_STATE1/2
+    wezterm: term/src/terminalstate/mod.rs:291,1954-1958 modify_other_keys; termwiz/src/terminal/unix.rs:104
+      modify_other_keys(level); termwiz/CHANGELOG.md 'Support for modifyOtherKeys keyboard encoding'
+    mintty: src/term.h:564 modify_other_keys; src/wininput.c extensive modify_other_keys-gated key encoding
+    iterm2: 'iTerm2 3.5.0 release notes/docs: supports XTMODKEYS 4;2 (same feature as xterm''s modifyOtherKeys)'
+    xterm: input.c:285-644 ModifyOtherKeys() -- the original implementation
+    gnome-terminal: 'no modifyOtherKeys/MODIFY_OTHER_KEYS hits anywhere in GNOME/vte source (GitHub code
+      search); corroborated by third-party reports (e.g. termite issue #157) that VTE-based terminals
+      lack it'
+    konsole: no modifyOtherKeys hits anywhere in konsole/src (repo-wide search, excluding .po translation
+      files)
+    windows-terminal: no modifyOtherKeys hits anywhere in windows-terminal/src; Windows Terminal instead
+      implements its own non-xterm-compatible win32-input-mode
+    alacritty: 'open, still-unimplemented GitHub issue #3101 ''Implement modifyOtherKeys'' (filed 2019);
+      no corresponding TermMode bitflag in alacritty_terminal/src/term/mod.rs'
+  notes: 'kitty is a deliberate ''no'': it recognizes and parses the sequence but refuses to act on it,
+    logging a warning that steers applications to the kitty keyboard protocol instead. Windows Terminal
+    and VTE-based terminals (GNOME Terminal, Tilix, ...) have no implementation at all, relying on their
+    own alternative protocols (win32-input-mode, kitty protocol respectively). Independently corroborated
+    by measurement: kitty parses `CSI > 4 m` but only logs a warning and stores nothing, matching the
+    source-level finding exactly.'
+- id: bracketed_paste
+  name: Bracketed paste
+  category: input
+  sequence: DECSET/DECRST 2004; pasted text wrapped in CSI 200~ ... CSI 201~
+  spec: https://cirw.in/blog/bracketed-paste
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:807,1316 DECMode::BracketedPaste <-> 2004; src/vtbackend/InputGenerator.h:609
+      setBracketedPaste
+    kitty: kitty/kitty/screen.c BRACKETED_PASTE mode (SIMPLE_MODE/KNOWN_MODE/MODE_GETSET macros)
+    ghostty: src/terminal/modes.zig:295 bracketed_paste=2004; src/terminal/formatter.zig tests CSI?2004h
+    foot: csi.c:551,661,709 case 2004 / decrpm(term->bracketed_paste) / xtsave
+    wezterm: term/src/terminalstate/mod.rs:309,762-825 bracketed_paste field + bracketed_paste_enabled()
+    gnome-terminal: src/modes.py:1307 mode_WHAT('XTERM_READLINE_BRACKETED_PASTE', 2004, flags=Flags.WRITABLE)
+      -- WRITABLE marks it as actually implemented, not just recognized
+    konsole: src/Emulation.cpp:36-57 programBracketedPasteMode/bracketedPasteModeChanged
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1881-2027 XTERM_BracketedPasteMode -> ITerminalApi::Mode::BracketedPaste
+    mintty: src/termout.c:2668-2669,2866-2867 case 2004
+    iterm2: long-standing, widely documented iTerm2 feature (Terminal Profile Preferences)
+    xterm: xcharmouse.h SET_BRACKETED_PASTE definition; xterm originated the feature
+    alacritty: alacritty_terminal/src/term/mod.rs TermMode::BRACKETED_PASTE bitflag, wired in set/reset/report_mode
+  notes: ''
+- id: focus_events
+  name: Focus in/out reporting
+  category: input
+  sequence: DECSET/DECRST 1004; reports CSI I (focus in) / CSI O (focus out)
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:808,1317 DECMode::FocusTracking <-> 1004; src/vtbackend/InputGenerator.cpp:1144-1166
+      generateFocusInEvent/generateFocusOutEvent
+    kitty: kitty/kitty/screen.c FOCUS_TRACKING mode (SIMPLE_MODE/KNOWN_MODE/MODE_GETSET macros)
+    ghostty: src/terminal/modes.zig:282 focus_event=1004; src/terminal/focus.zig
+    foot: csi.c:423,647,695 case 1004 / decrpm(term->focus_events) / xtsave
+    wezterm: term/src/terminalstate/mod.rs:313,787 focus_tracking field
+    gnome-terminal: src/modes.py:1251 mode_WHAT('XTERM_FOCUS', 1004, flags=Flags.WRITABLE)
+    konsole: src/Vt102Emulation.cpp:86,2300-2301,2974 _reportFocusEvents / token_csi_pr('h'/'l', 1004)
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1868,2018 TerminalInput::Mode::FocusEvent
+    mintty: src/termout.c:2607,2840 FOCUS_EVENT_MOUSE, configurable via cfg.suppress_dec
+    iterm2: long-standing, widely documented iTerm2/xterm-compatible feature
+    xterm: input.c and ptyx.h implement 1004 (xterm originated focus reporting)
+    alacritty: alacritty_terminal/src/term/mod.rs TermMode::FOCUS_IN_OUT bitflag, NamedPrivateMode::ReportFocusInOut
+  notes: ''
+- id: sgr_mouse
+  name: SGR extended mouse reporting
+  category: input
+  sequence: DECSET/DECRST 1006; reports CSI < Cb ; Cx ; Cy M/m
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:816-817,1321 DECMode::MouseSGR <-> 1006
+    kitty: kitty/kitty/modes.h:67 MOUSE_SGR_MODE (1006 << 5)
+    ghostty: src/terminal/mouse.zig:25 'sgr' // 1006; src/terminal/modes.zig:284 mouse_format_sgr=1006
+    foot: csi.c:438,649,697 case 1006 / MOUSE_SGR
+    wezterm: term/src/terminalstate/mod.rs:1818-1830 DecPrivateModeCode::SGRMouse
+    gnome-terminal: src/modes.py:1255 mode_WHAT('XTERM_MOUSE_EXT_SGR', 1006, flags=Flags.WRITABLE)
+    konsole: src/Vt102Emulation.cpp:2308-2311 MODE_Mouse1006, token_csi_pr(...,1006)
+    windows-terminal: src/terminal/adapter/DispatchTypes.hpp:543 SGR_EXTENDED_MODE=DECPrivateMode(1006);
+      adaptDispatch.cpp:1865,2015 SgrMouseEncoding
+    mintty: src/termout.c:2612,2844 mode 1006 'Xterm's CSI-style mouse encoding'
+    iterm2: documented, widely-supported xterm-compatible feature
+    xterm: button.c SET_SGR_EXT_MODE_MOUSE -- xterm originated SGR mouse mode
+    alacritty: alacritty_terminal/src/term/mod.rs TermMode::SGR_MOUSE bitflag, NamedPrivateMode::SgrMouse
+  notes: ''
+- id: sgr_pixel_mouse
+  name: SGR-Pixel mouse reporting
+  category: input
+  sequence: DECSET/DECRST 1016; like 1006 but coordinates are in pixels, not cells
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'yes'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:822-823,1323 DECMode::MouseSGRPixels <-> 1016; src/vtbackend/InputGenerator.cpp:1329
+      MouseTransport::SGRPixels
+    kitty: kitty/kitty/modes.h:69 MOUSE_SGR_PIXEL_MODE (1016 << 5)
+    ghostty: src/terminal/mouse.zig:27 'sgr_pixels' // 1016; src/terminal/modes.zig:287 mouse_format_sgr_pixels=1016
+    foot: csi.c:456,652,700 case 1016 / MOUSE_SGR_PIXELS
+    wezterm: term/src/terminalstate/mod.rs:1836-1844 DecPrivateModeCode::SGRPixelsMouse
+    gnome-terminal: 'src/modes.py:1259 mode_WHAT(''XTERM_MOUSE_EXT_SGR_PIXEL'', 1016, default=False) --
+      NO Flags.WRITABLE, unlike every implemented mode in the table (module docstring: entries without
+      WRITABLE are ''not implemented in VTE'')'
+    konsole: src/Vt102Emulation.cpp:2323-2326,2783,2896,3502-3549 MODE_Mouse1016 fully wired (set/save/restore/report)
+    windows-terminal: no 1006-pixel/SgrPixel/1016 hits anywhere in src/terminal (only 1006 SGR is implemented)
+    mintty: src/termout.c:2615,2846 mode 1016 'CSI-style mouse encoding with pixel resolution'
+    iterm2: no documentation or source evidence of 1016 support found; contrasts with 1006 which is well
+      documented
+    xterm: button.c SET_PIXEL_POSITION_MOUSE -- xterm (>=xterm-359) originated this mode
+    alacritty: alacritty_terminal/src/term/mod.rs TermMode bitflags list has SGR_MOUSE but no SGR-pixel
+      equivalent; not implemented
+  notes: This is the row with the most 'no's -- 1016 is much newer/rarer than the other input modes. GNOME/vte's
+    own source explicitly distinguishes 'recognized' from 'implemented' via a WRITABLE flag, which is
+    strong primary evidence for its 'no'.
+- id: osc8_hyperlinks
+  name: OSC 8 hyperlinks
+  category: hyperlinks
+  sequence: OSC 8 ; params ; URI ST text OSC 8 ; ; ST
+  spec: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: partial
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:851 HYPERLINK = detail::OSC(8, ...)
+    kitty: kitty/hyperlink.c; vt-parser.c:530 case 8 -> dispatch_hyperlink
+    ghostty: src/terminal/hyperlink.zig, osc/parsers/hyperlink.zig; stream.zig hyperlink_start/hyperlink_end
+      -> handler.vt(.start_hyperlink/.end_hyperlink)
+    foot: foot/osc.c:1379 case 8 -> osc_uri(); grid.c tracks OSC-8 URI spans
+    wezterm: 'wezterm-escape-parser/src/osc.rs: SetHyperlink = "8", Hyperlink::parse'
+    gnome-terminal: GNOME/vte src/parser-osc.hh _VTE_OSC(VTEHYPER, 8); src/vteseq.cc case VTE_OSC_VTEHYPER
+      -> set_current_hyperlink(); supported since VTE 3.26
+    konsole: 'src/Vt102Emulation.cpp ~3691: urlExtractor()->reading() gate on OSC 8; per OSC8-Adoption
+      tracker, disabled by default since Jul 2020'
+    windows-terminal: 'src/terminal/parser/OutputStateMachineEngine.hpp: OscActionCodes::Hyperlink = 8;
+      .cpp:870 case Hyperlink -> AddHyperlink/EndHyperlink'
+    mintty: 'src/termout.c:5002 ''when 8: // hyperlink attribute''; supported since 2.9.7 (2019-03-15)'
+    iterm2: https://iterm2.com/documentation-escape-codes.html Hyperlinks/FinalTerm section; supported
+      since 3.1
+    xterm: xterm-406/misc.c OscMiscOps enum (do_osc dispatch table) has no entry for 8; no hyperlink.c/handler
+      exists anywhere in the tree -- a long-standing, deliberate xterm gap
+    alacritty: alacritty/vte src/ansi.rs:1393 b"8" if params.len() > 2 => ... self.handler.set_hyperlink(...);
+      supported since v0.11.0 (2022-10-13)
+  notes: Konsole gates hyperlink recognition behind an opt-in extractor that is off by default in most
+    shipped profiles.
+- id: osc52_clipboard
+  name: OSC 52 clipboard set/query
+  category: hyperlinks
+  sequence: OSC 52 ; Pc ; base64-or-? ST
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: partial
+    windows-terminal: partial
+    mintty: 'yes'
+    iterm2: partial
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:840 CLIPBOARD = detail::OSC(52,...); Screen.cpp:4103 impl::clipboard
+      -- write always, read via requestClipboardRead() gated by Settings::allowClipboardRead (default
+      false)
+    kitty: kitty/vt-parser.c is_osc_52/continue_osc_52, case 52 -> clipboard_control; read gated by the
+      clipboard_control config option
+    ghostty: 'src/terminal/osc.zig: clipboard_contents { data: ?[]const u8 } -- null data means ''send
+      current clipboard to pty'' (read), non-null sets it (write)'
+    foot: 'foot/csi.c:856-873: security.osc52 resource distinguishes OSC52_ENABLED (read+write) from OSC52_COPY_ENABLED
+      (write-only, the more conservative default)'
+    wezterm: wezterm-escape-parser/src/osc.rs Selection::CLIPBOARD bit ('c' item); handled for both set
+      and query
+    gnome-terminal: 'GNOME/vte src/vteseq.cc: VTE_OSC_XTERM_SET_XSELECTION (OSC 52) falls into the same
+      case block as XTERM_SET_ICON_TITLE/SET_FONT/etc, i.e. explicitly unimplemented/ignored -- deliberate,
+      documented security decision'
+    konsole: 'src/Vt102Emulation.cpp:1285-1320 Clipboard attribute: QClipboard::setText()/clear() only;
+      no ''?'' query branch found -- write-only'
+    windows-terminal: 'src/terminal/parser/OutputStateMachineEngine.cpp:821-827: parses the query form
+      but calls _dispatch->SetClipboard only `&& !queryClipboard` -- read requests are deliberately no-op''d'
+    mintty: 'src/termout.c:4676 do_clipboard(): base64 write always; ''?'' read gated by cfg.allow_paste_selection'
+    iterm2: Preferences -> General -> Selection -> 'Applications in terminal may access clipboard' gate;
+      write-only (paste is Cmd-V only), separate from iTerm2's own OSC 1337 CopyToClipboard extension
+    xterm: 'xterm-406/misc.c: OSC_SelectionData = 52, case OSC_SelectionData -> ManipulateSelectionData()
+      handles both ''?'' read and base64 write, gated by the allowWindowOps/disallowedWindowOps resources'
+    alacritty: 'alacritty/vte src/ansi.rs:1483 b"52" -> clipboard_load (on ''?'') / clipboard_store; gated
+      by config terminal.osc52: Disabled | OnlyCopy (default) | OnlyPaste | CopyPaste'
+  notes: Read (querying clipboard contents back into the app) is a well-known exfiltration vector, so
+    most terminals default to write-only or gate reads behind an explicit opt-in; gnome-terminal refuses
+    the whole sequence outright.
+- id: kitty_clipboard_protocol
+  name: Kitty clipboard protocol (OSC 5522)
+  category: hyperlinks
+  sequence: OSC 5522 ; metadata ; base64-payload ST
+  spec: https://sw.kovidgoyal.net/kitty/clipboard/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'no'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:876 KITTYCLIPBOARD = detail::OSC(5522,...); Screen.cpp:4767 processKittyClipboard()
+      -- chunked, MIME-typed read/write, read gated by Settings::allowClipboardRead
+    kitty: 'kitty/docs/clipboard.rst documents the full wire format; kitty/vt-parser.c:566 ''case 52:
+      case 5522:'' both dispatch to clipboard_control -- this is the protocol''s origin'
+    ghostty: src/terminal/osc/parsers/kitty_clipboard_protocol.zig fully parses OSC 5522, but src/terminal/stream.zig:2377
+      lists .kitty_clipboard_protocol among cases that just log 'unimplemented OSC callback' and do nothing;
+      tracked as open issue ghostty-org/ghostty#10549
+    foot: no '5522' match anywhere in the foot source tree
+    wezterm: no OSC 5522 handling in wezterm-escape-parser/src/osc.rs (only unrelated Unicode-codepoint-table
+      coincidences elsewhere in the tree)
+    gnome-terminal: GNOME/vte src/parser-osc.hh has no OSC 5522 entry in its ~70-entry OSC table
+    konsole: no '5522' match in src/Vt102Emulation.{h,cpp}
+    windows-terminal: no '5522' match in src/terminal/parser/OutputStateMachineEngine.{cpp,hpp}
+    mintty: no '5522' match in src/termout.c
+    iterm2: 'WebSearch corroborated by ghostty-org/ghostty#10549 discussion: iTerm2 supports only plain
+      OSC 52, not the kitty OSC 5522 protocol'
+    xterm: no '5522' match anywhere in xterm-406
+    alacritty: alacritty/vte src/ansi.rs OSC dispatch table has no b"5522" arm
+  notes: Ghostty parses the wire format but the handler is an explicit no-op stub, so it doesn't count
+    as working support yet.
+- id: osc7_cwd
+  name: OSC 7 current working directory
+  category: shell
+  sequence: OSC 7 ; file://host/path ST
+  spec: https://gitlab.freedesktop.org/terminal-wg/specifications/-/blob/master/proposals/semantic-prompts.md
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:866 SETCWD = detail::OSC(7,...)
+    kitty: kitty/vt-parser.c:527-533 case 7 -> process_cwd_notification (screen.c:3302)
+    ghostty: src/terminal/osc.zig:57-66 report_pwd struct, documented as 'OSC 7. Reports the current working
+      directory of the shell.'
+    foot: foot/osc.c:1374-1378 case 7 -> osc_set_pwd()
+    wezterm: 'wezterm-escape-parser/src/osc.rs: SetCurrentWorkingDirectory = "7"'
+    gnome-terminal: GNOME/vte src/parser-osc.hh _VTE_OSC(VTECWD, 7); src/vteseq.cc case VTE_OSC_VTECWD
+      -> set_termprop_uri(CURRENT_DIRECTORY_URI); in use since GNOME Terminal 3.8 (2013)
+    konsole: src/Vt102Emulation.h osc enum has no entry for 7; src/ProcessInfo.cpp:451 reads /proc/<pid>/cwd
+      instead -- cwd tracking exists but is not driven by the OSC 7 escape sequence
+    windows-terminal: 'src/terminal/parser/OutputStateMachineEngine.hpp: OscActionCodes::CurrentWorkingDirectory
+      = 7'
+    mintty: 'src/termout.c:4858 ''when 7: // Set working directory (from Mac Terminal) for Alt+F2'''
+    iterm2: 'https://iterm2.com/documentation-escape-codes.html: ''OSC 7 ; Ps ST'' documented as setting
+      RemoteHost/CurrentDir'
+    xterm: xterm-406/misc.c OscMiscOps enum has no entry for 7 -- xterm does not track cwd via OSC 7
+    alacritty: 'not in alacritty/vte src/ansi.rs OSC dispatch table; PR #2937 ''Implement handling for
+      OS escape code 7'' was closed unmerged (gh pr view 2937 --repo alacritty/alacritty: state=CLOSED,
+      mergedAt=null)'
+  notes: Konsole deliberately gets the cwd from /proc/<pid>/cwd (src/ProcessInfo.cpp) rather than parsing
+    OSC 7 -- a platform-specific mechanism outside the escape-sequence protocol, so it is scored 'no'
+    here even though the end-user feature (open-new-tab-in-same-dir) exists.
+- id: osc133_semantic_prompt
+  name: OSC 133 semantic prompt marks
+  category: shell
+  sequence: OSC 133 ; A|B|C|D[;params] ST
+  spec: https://gitlab.freedesktop.org/terminal-wg/specifications/-/blob/master/proposals/semantic-prompts.md
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:862 SEMA = detail::OSC(133,...); Screen.cpp:6814 case SEMA -> processShellIntegration();
+      handles 'A'/'B'/'C'/'D' (Screen.cpp:5845,5857); LineFlags.h marks
+    kitty: kitty/vt-parser.c:580 case 133
+    ghostty: 'src/terminal/osc.zig: semantic_prompt field backed by parsers.semantic_prompt; state machine
+      transitions through ''133'' (osc.zig:667)'
+    foot: foot/osc.c:1615 case 133
+    wezterm: 'wezterm-escape-parser/src/osc.rs: FinalTermSemanticPrompt = "133"'
+    gnome-terminal: GNOME/vte src/vteseq.cc case VTE_OSC_ITERM2_SHELL_INTEGRATION (OSC 133) -> set_current_shell_integration_mode()
+    konsole: src/Vt102Emulation.h:198 SemanticPrompts = 133; Vt102Emulation.cpp:1193-1218 handles A/B/C/D/L,
+      setting REPL_PROMPT/REPL_INPUT/REPL_OUTPUT state
+    windows-terminal: 'src/terminal/parser/OutputStateMachineEngine.hpp: OscActionCodes::FinalTermAction
+      = 133'
+    mintty: no '133' match anywhere in src/termout.c
+    iterm2: https://iterm2.com/documentation-escape-codes.html Shell Integration/FinalTerm section documents
+      FTCS_PROMPT/COMMAND_START/COMMAND_EXECUTED/COMMAND_FINISHED as OSC 133;A/B/C/D -- iTerm2 is one
+      of the sequence's originators
+    xterm: xterm-406/misc.c OscMiscOps enum has no entry for 133
+    alacritty: not in alacritty/vte src/ansi.rs OSC dispatch table; feature request alacritty/alacritty#5850
+      remains open
+  notes: Alacritty deliberately keeps the OSC surface minimal; OSC 133 has been requested since 2022 but
+    is not implemented.
+- id: osc9_osc777_notifications
+  name: Desktop notifications (OSC 9 / OSC 777)
+  category: shell
+  sequence: OSC 9 ; message ST  |  OSC 777 ; notify ; title ; body ST
+  spec: https://github.com/ConEmu/ConEmu.github.io/blob/master/_includes/AnsiEscapeCodes.md#ConEmu_specific_OSC
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: partial
+    windows-terminal: partial
+    mintty: 'no'
+    iterm2: partial
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:850 CONEMU=OSC(9), :852 NOTIFY=OSC(777); Screen.cpp impl::CONEMU
+      (plain message + '4;state;progress') and impl::NOTIFY ('notify;title;body') both call screen.notify()
+      -- both variants fully wired
+    kitty: 'kitty/vt-parser.c:538-545: case 9, 99, 777, 1337 all -> desktop_notify'
+    ghostty: src/terminal/osc.zig:94 'Show a desktop notification (OSC 9 or OSC 777)' -- one unified Command
+      variant; stream.zig:2343 dispatches to handler.vt(.show_desktop_notification,...)
+    foot: foot/osc.c:1383 case 9 (iTerm2 Growl notification, filters out the ConEmu numeric-subcommand
+      form) and :1679 case 777 (urxvt 'notify' command) both -> osc_notify()
+    wezterm: term/src/terminalstate/performer.rs:904 SystemNotification (OSC 9) and :915 RxvtExtension
+      'notify' (OSC 777) both raise Alert::ToastNotification
+    gnome-terminal: GNOME/vte src/vteseq.cc conemu_extension() (OSC 9) implements ONLY the '9;4' progress
+      subfunction per its own doc comment ('Only the 9;4 subfunction... is implemented'); urxvt_extension()
+      (OSC 777) implements only precmd/preexec/postexec shell-integration termprops behind enable_legacy_osc777(),
+      and its 'notify' branch only fires for the literal string 'Command completed' -- neither path shows
+      a desktop popup
+    konsole: src/Vt102Emulation.cpp ConEmu (OSC 9) handler only implements the '4;...' progress-indicator
+      subform (progressChanged/progressHidden signals); Notification (OSC 777) handler does call KNotification::event()
+      for a real popup -- only one of the two variants notifies
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:3558 DoConEmuAction (OSC 9) implements only
+      subParam 4 (taskbar progress) and 9 (cwd) -- no message popup; :3880 DoUrxvtAction (OSC 777) implements
+      a real 'notify;title;body' toast, gated behind OptionalFeature::DesktopNotification
+    mintty: no OSC 9 or OSC 777 handling found in src/termout.c's OSC switch
+    iterm2: https://iterm2.com/documentation-escape-codes.html documents 'OSC 9 ; message ST' natively
+      (plus OSC 9;4 progress); no evidence of OSC 777 (rxvt-style) support
+    xterm: xterm-406/misc.c OscMiscOps enum has no entry for 9 or 777
+    alacritty: not in alacritty/vte src/ansi.rs OSC dispatch table
+  notes: 'Several terminals implement the two codes asymmetrically: gnome-terminal, konsole and Windows
+    Terminal each treat OSC 9 as ConEmu progress/cwd plumbing rather than a message popup, while giving
+    OSC 777 (or, for gnome-terminal, neither) the actual notification behavior.'
+- id: truecolor_sgr
+  name: 24-bit true color (SGR 38;2 / 48;2)
+  category: colors
+  sequence: CSI 38;2;r;g;b m / CSI 48;2;r;g;b m
+  spec: https://github.com/termstandard/colors
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Screen.cpp:3633,3643 case 38/48 -> parseColor()
+    kitty: kitty/cursor.c apply_sgr_to_cells(), case 38/48 -> SET_COLOR macro (parse_color)
+    ghostty: src/terminal/sgr.zig case 38, slice[1]==2 -> parseDirectColor(.direct_color_fg, ...)
+    foot: foot/csi.c case 38 (direct-colour foreground parsing)
+    wezterm: wezterm-escape-parser/src/csi.rs Sgr::Foreground(ColorSpec::TrueColor(c))
+    gnome-terminal: vte/src/parser-sgr.hh SGR(SET, FORE_SPEC, 38); used in vteseq.cc (VTE_SGR_SET_FORE_SPEC)
+    konsole: konsole/src/Vt102Emulation.cpp:2113,2126 case 38/48 -> setForeColor/setBackColor(p, q) with
+      RGB color-space parsing at line ~593-622
+    windows-terminal: windows-terminal/src/terminal/adapter/adaptDispatchGraphics.cpp GraphicsOptions::RGBColorOrFaint
+      / ForegroundExtended
+    mintty: 'mintty/src/termout.c:2185+ do_sgr(), "when 38: /* palette/true-colour foreground */"'
+    iterm2: 'iterm2 sources/VT100/VT100GraphicRendition.m: CSI 38:2/38;2 24-bit color parsing (multiple
+      legacy/compliant forms)'
+    xterm: xterm-406/misc.c getDirectColor()/formatDirectColor(); charproc.c case 38/48
+    alacritty: alacritty_terminal/src/term/mod.rs Attr::Foreground(color)/Attr::Background(color) with
+      vte::ansi::Rgb; added ~2017
+  notes: Universal among actively-developed terminals; the only real variance historically was VTE's early
+    days, long since resolved.
+- id: osc_4_10_11_palette
+  name: OSC 4/10/11 dynamic palette, foreground, background color (set + query)
+  category: colors
+  sequence: OSC 4;i;spec ST | OSC 10;spec ST | OSC 11;spec ST (spec="?" queries)
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: partial
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h SETCOLPAL=OSC(4), COLORFG=OSC(10), COLORBG=OSC(11)
+    kitty: kitty/vt-parser.c DISPATCH_OSC_WITH_CODE(set_color_table_color) / set_dynamic_color; kitty/screen.c
+      set_dynamic_color()
+    ghostty: src/terminal/osc.zig OSC state '4', '10', '11' (self.state = .@"4"/.@"10"/.@"11")
+    foot: foot/osc.c case 4 (palette), case 10/11 (fg/bg), including query form
+    wezterm: wezterm-escape-parser/src/osc.rs ChangeColorNumber="4", ChangeDynamicColors(DynamicColorNumber,
+      ...) covers 10/11
+    gnome-terminal: vte/src/parser-osc.hh XTERM_SET_COLOR=4, XTERM_SET_COLOR_TEXT_FG=10, XTERM_SET_COLOR_TEXT_BG=11
+    konsole: konsole/src/Vt102Emulation.h enum osc { ReportColors = 4, ... } + processSessionAttributeRequest()
+      handles OSC 4 set/query; no attribute==10/11 handling found anywhere in the tree
+    windows-terminal: windows-terminal/src/terminal/parser/OutputStateMachineEngine.hpp OscActionCodes::SetColor(=4)/SetForegroundColor=10/SetBackgroundColor=11;
+      OutputStateMachineEngine.cpp _GetOscSetColorTable/_GetOscSetColor
+    mintty: 'mintty/src/termout.c do_colour_osc(); switch(term.cmd_num): when 4, when 10, when 11 (11
+      falls back to standard bg-color set when not a background-image spec)'
+    iterm2: sources/VT100/VT100XtermParser.m @4:XTERMCC_SET_RGB, @10:XTERMCC_TEXT_FOREGROUND_COLOR, @11:XTERMCC_TEXT_BACKGROUND_COLOR
+    xterm: xterm-406/misc.c ChangeColorsRequest()/ReportColorRequest()/ReportAnsiColorRequest() -- xterm
+      is the origin of OSC 10/11
+    alacritty: alacritty_terminal/src/term/mod.rs Handler::set_color()/dynamic_color_sequence() (vte::ansi::Handler
+      trait)
+  notes: 'Konsole marked partial: OSC 4 (256-color palette) set+query is implemented, but OSC 10/11 (dynamic
+    default foreground/background) is not wired to any handler in the source tree -- Konsole''s colors
+    are controlled only via profiles, not by these two escapes specifically.'
+- id: decscusr_cursor_styles
+  name: DECSCUSR set cursor style
+  category: colors
+  sequence: CSI Ps SP q
+  spec: https://vt100.net/docs/vt510-rm/DECSCUSR.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:760 detail::CSI(std::nullopt, 0, 1, ' ', 'q', VTType::VT520, documentation::DECSCUSR)
+    kitty: 'kitty/kitty/screen.c:3013,3365 case '' '': // DECSCUSR'
+    ghostty: src/terminal/dcs.zig 'q' => .decscusr; src/terminal/cursor.zig documents DECSCUSR 1-6 mapping
+    foot: foot/dcs.c:421 /* DECSCUSR - Set Cursor Style */
+    wezterm: wezterm-escape-parser/src/csi.rs CSI::CursorStyle(CursorStyle) enum + parser
+    gnome-terminal: vte/src/vteseq.cc Terminal::DECSCUSR(), case VTE_CMD_DECSCUSR
+    konsole: konsole/src/Vt102Emulation.cpp:2359 // Set Cursor Style (DECSCUSR), VT520, with the extra
+      xterm sequences
+    windows-terminal: windows-terminal/src/terminal/adapter/adaptDispatch.cpp:3250 AdaptDispatch::SetCursorStyle()
+      // DECSCUSR
+    mintty: 'mintty/src/termout.c:3640 when CPAIR('' '', ''q''): /* DECSCUSR: set cursor style */'
+    iterm2: 'sources/VT100/VT100Terminal.m:2291 case VT100CSI_DECSCUSR:'
+    xterm: xterm-406/VTPrsTbl.c CASE_DECSCUSR; misc.c:4932 " q" /* DECSCUSR */
+    alacritty: alacritty_terminal/src/term/mod.rs fn set_cursor_style(), vte::ansi::CursorStyle
+  notes: Universally supported; DECSCUSR is a VT520-era sequence that xterm adopted early and every modern
+    terminal has followed.
+- id: underline_styles_curly
+  name: Extended underline styles via CSI 4:Ps m (curly/dotted/dashed/double)
+  category: colors
+  sequence: CSI 4:0m none, 4:1m single, 4:2m double, 4:3m curly, 4:4m dotted, 4:5m dashed
+  spec: https://sw.kovidgoyal.net/kitty/underlines/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/CellFlags.h Underline(3)/DoublyUnderlined(8)/CurlyUnderlined(9)/DottedUnderline(10)/DashedUnderline(11)
+    kitty: 'kitty/cursor.c apply_sgr_to_cells() case 4: val = MIN(5, params[i]) when is_group -- full
+      0-5 range; kitty/decorations.c add_dotted_underline()/add_dashed_underline() render them'
+    ghostty: 'src/terminal/sgr.zig underline switch slice[1]: 0=none,1=single,2=double,3=curly,4=dotted,5=dashed'
+    foot: foot/config.c:1311 underline-style enum {none,single,double,curly,dotted,dashed}; foot/csi.c/render.c
+      UNDERLINE_CURLY handling
+    wezterm: wezterm-escape-parser/src/csi.rs enum Underline { Single=1, Double=2, Curly=3, Dotted=4,
+      Dashed=5 }
+    gnome-terminal: vte/src/parser-sgr.hh SGR(SET, UNDERLINE, 4) with colon subparameters (coordinated
+      with kitty per upstream discussion); vte/src/cell.hh stores underline as a multi-bit CELL_ATTR_UINT
+      value, not a boolean
+    konsole: 'konsole/src/Vt102Emulation.cpp:2078 case ''m'',4: passes subparameter straight into Screen::setUnderlineType();
+      konsole/src/terminalDisplay/TerminalPainter.cpp renders RE_UNDERLINE_CURL/RE_UNDERLINE_DOT/RE_UNDERLINE_DASH/RE_UNDERLINE_DOUBLE'
+    windows-terminal: windows-terminal/src/buffer/out/TextAttribute.hpp enum class UnderlineStyle { SinglyUnderlined=1,
+      DoublyUnderlined=2, CurlyUnderlined=3, DottedUnderlined=4, DashedUnderlined=5 }
+    mintty: 'mintty/src/termout.c:2430,3825 when 4 | SUB_PARS: switch on subparam 0..5 sets ATTR_UNDER/ATTR_DOUBLYUND/ATTR_CURLYUND/ATTR_BROKENUND(+DOUBLYUND
+      for dashed)'
+    iterm2: sources/VT100/VT100GraphicRendition.m VT100UnderlineStyleSingle/Double/Curly/Dotted/Dashed
+    xterm: No case for a colon/curly-style subparameter found under SGR 4 in xterm-406/charproc.c; xterm
+      only implements plain (4) and double (21) underline
+    alacritty: alacritty_terminal/src/term/mod.rs Attr::Underline, Attr::DoubleUnderline, Attr::Undercurl,
+      Attr::DottedUnderline, Attr::DashedUnderline
+  notes: Originated informally (kitty/VTE coordinated on the CSI 4:Ps encoding), now adopted almost everywhere
+    except xterm, which deliberately keeps its SGR set minimal.
+- id: underline_color_sgr58
+  name: SGR 58/59 underline color
+  category: colors
+  sequence: CSI 58:2::r:g:b m (set) / CSI 58:5:idx m (256-color) / CSI 59 m (reset)
+  spec: https://sw.kovidgoyal.net/kitty/underlines/#colored-underlines
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: 'src/vtbackend/Screen.cpp:3651 case 58: target.setUnderlineColor(parseColor(...))'
+    kitty: 'kitty/kitty/data-types.h:129 #define DECORATION_FG_CODE 58; kitty/cursor.c case DECORATION_FG_CODE:
+      SET_COLOR(decoration_fg)'
+    ghostty: src/terminal/sgr.zig case 58 (parses color), case 59 => .reset_underline_color
+    foot: foot/csi.c term->vt.underline.color_src/color set on SGR 58 (colon-subparam), reset at 59
+    wezterm: wezterm-escape-parser/src/csi.rs SgrCode::UnderlineColor / ResetUnderlineColor, Sgr::UnderlineColor(ColorSpec)
+    gnome-terminal: vte/src/parser-sgr.hh SGR(SET, DECO_SPEC, 58) / SGR(RESET, DECO, 59); vte/src/vteseq.cc
+      uses VTE_SGR_SET_DECO_SPEC; vte/src/cell.hh m_colors stores "fore, back and deco (underline) colour"
+    konsole: konsole/src/Vt102Emulation.cpp:2130,2132 case 'm',58/59 -> Screen::setULColor(p,q) / setULColor(COLOR_SPACE_UNDEFINED,0)
+    windows-terminal: 'windows-terminal/src/terminal/adapter/adaptDispatchGraphics.cpp case UnderlineColor:
+      attr.SetUnderlineColor(color); case UnderlineColorDefault'
+    mintty: 'mintty/src/termout.c:2430,3398,3887 when 58 | SUB_PARS: /* ISO/IEC 8613-6 format underline
+      colour */; caflagsmask |= ATTR_ULCOLOUR'
+    iterm2: sources/VT100/VT100GraphicRendition.m rendition->hasUnderlineColor / underlineColor fields
+      set from SGR 58/59
+    xterm: No case 58/59 found in xterm-406/charproc.c SGR handling (only 38/48 present); xterm does not
+      support colored underlines
+    alacritty: alacritty_terminal/src/term/mod.rs Attr::UnderlineColor(color) / UnderlineColorDefault
+      handling
+  notes: Rarer than curly underline but still widely adopted; xterm is again the notable holdout. Konsole's
+    implementation (setULColor) predates most others.
+- id: mode_2048_inband_resize
+  name: In-band window resize notifications (DEC mode 2048)
+  category: window
+  sequence: CSI ? 2048 h/l ; reports as CSI 48 ; height ; width ; pxheight ; pxwidth t
+  spec: https://gist.github.com/rockorager/e695fb2924d36b2bcf1fff4a3704bd83
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'no'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:1329 maps DECMode::InBandWindowResize to 2048; Terminal.h:1608
+      sends the report on every resize
+    kitty: kitty/modes.h:91-92 INBAND_RESIZE_NOTIFICATION = 2048<<5; kitty/screen.c:1797,2342,4986 wire
+      it into mode get/set
+    ghostty: ghostty/include/ghostty/vt/modes.h:95 GHOSTTY_MODE_IN_BAND_RESIZE(2048); src/terminal/stream_terminal.zig:154-172
+      encodes the mode_2048 report on resize
+    foot: foot/csi.c:572,667,713,758 (decrqm/xtsave hooks for mode 2048); documented in foot/doc/foot-ctlseqs.7.scd
+    wezterm: no handler found in term/src/terminalstate or wezterm-escape-parser/src for mode 2048
+    gnome-terminal: no '2048' hit anywhere in vteseq.cc (GNOME/vte master, fetched 2026-07)
+    konsole: no '2048' hit in src/Vt102Emulation.cpp
+    windows-terminal: no '2048' hit in src/terminal/adapter/adaptDispatch.{cpp,hpp}
+    mintty: no real hit in src/*.c (only unrelated numeric-buffer-size literals)
+    iterm2: sources/VT100/VT100Terminal.m:998,5626 self.sendResizeNotifications, explicitly citing this
+      same proposal doc
+    xterm: no '2 0 4 8' (digit-spaced) hit in ctlseqs.txt nor '2048' in charproc.c; xterm has not adopted
+      this newer terminal-wg proposal
+    alacritty: no hit in alacritty_terminal/src/term/mod.rs (the ansi::Handler impl)
+  notes: A 2023-era community proposal (not yet a ratified terminal-wg standard); contour and kitty are
+    the two reference implementations most others cite.
+- id: xtwinops
+  name: XTWINOPS window manipulation
+  category: window
+  sequence: CSI Ps ; Ps ; Ps t
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Window-manipulation
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: partial
+    foot: partial
+    wezterm: partial
+    gnome-terminal: partial
+    konsole: partial
+    windows-terminal: partial
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: partial
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:797 WINMANIP; src/vtbackend/Screen.cpp:4353-4467 implements Ps=1-4,8-11,13-16,18-23
+      (missing only raise/lower/refresh, 5/6/7)
+    kitty: 'kitty/vt-parser.c:1283-1309 explicitly rejects resize (Ps=4,8: "not supported"), implements
+      report (14,16,18) and title stack (22,23) only'
+    ghostty: 'src/terminal/stream.zig:2070-2135 ''t'' case: report subset (14,16,18,21) + title push/pop
+      (22,23) only, no resize/iconify/maximize'
+    foot: foot/csi.c:1262-1290+ marks 1,2,3,4,5,6,7,8,9,10,24 LOG_WARN("unimplemented"); implements 11,13,14,15,16,18,19,20,21
+      report-only
+    wezterm: 'term/src/terminalstate/mod.rs:2025-2097: report subset works; Iconify/DeIconify and all
+      title push/pop variants are explicit no-ops (`{}`); ResizeWindowCells explicitly refused'
+    gnome-terminal: 'src/vteseq.cc XTERM_WM(): iconify/deiconify and resize (pixels/cells) go through
+      an emit_resize_window()/m_xterm_wm_iconified signal; maximize/raise/lower/refresh/fullscreen are
+      literal no-op cases'
+    konsole: 'src/Vt102Emulation.cpp:2044-2055: only Ps=8 (resize), 14/16/18 (report); Ps=22/23 explicitly
+      marked IGNORED; no iconify/maximize/move/fullscreen'
+    windows-terminal: 'src/terminal/adapter/adaptDispatch.cpp:3482-3524 WindowManipulation(): DeIconify/Iconify/Refresh/ResizeWindowInCharacters/report-subset
+      only; no move, maximize, fullscreen, or title stack'
+    mintty: 'src/termout.c:3087 do_winop(): implements Ps=1-23 including iconify, move, raise/lower, maximize
+      (9;0-3), fullscreen (10), all report codes; gated per-op by cfg.suppress_win blocklist'
+    iterm2: sources/VT100/VT100Terminal.m:2744-2770 dispatches XTERMCC_WINDOWSIZE(_PIXEL)/WINDOWPOS/ICONIFY/DEICONIFY/RAISE/LOWER
+      to real delegate actions, plus the full report/title-stack subset
+    xterm: ctlseqs.txt "CSI Ps;Ps;Ps t" section documents and charproc.c implements the full 1-23 opcode
+      space (subject to the allowWindowOps resource)
+    alacritty: 'alacritty_terminal/src/term/mod.rs:2235-2276: only text_area_size_pixels/chars (report)
+      and push_title/pop_title implemented; no resize/iconify/move handlers found'
+  notes: Nearly every terminal deliberately refuses application-driven resize/iconify/raise as a security/UX
+    decision; mintty and iTerm2 are the two that actually perform it (both gated by user config/trust).
+- id: decslpp
+  name: DECSLPP (set lines per page)
+  category: window
+  sequence: CSI Ps t   (Ps >= 24, sharing the XTWINOPS opcode space)
+  spec: https://vt100.net/docs/vt510-rm/DECSLPP.html
+  support:
+    contour: 'no'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Screen.cpp WINDOWMANIP switch has no case for Ps>=24; only SGR's unrelated
+      'case 24' (no-underline) exists elsewhere
+    kitty: kitty/vt-parser.c:1283-1309 't' switch has no >=24 branch; falls through to "Unknown CSI t
+      window manipulation sequence"
+    ghostty: src/terminal/stream.zig 't' case only matches params 14/16/18/21/22/23; no >=24 branch, default
+      logs unsupported
+    foot: 'foot/csi.c:1268 case 24: LOG_WARN("unimplemented: resize window (DECSLPP)") — explicitly parsed
+      but refused'
+    wezterm: term/src/terminalstate/mod.rs:2087 Window::ResizeWindowCells is explicitly a no-op ("We don't
+      allow the application to change the window size"), which also covers the Ps>=24 opcode
+    gnome-terminal: src/vteseq.cc:5709 Terminal::DECSLPP() — accepts any Ps>=24 (not just the VT525-legal
+      set) and calls emit_resize_window()
+    konsole: 'src/Vt102Emulation.cpp: only case token_csi_ps(''t'', 8) (resize-in-chars) exists; no Ps>=24
+      branch'
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:3482-3524 WindowManipulationType enum has
+      no line-count/DECSLPP case, only ResizeWindowInCharacters (Ps=8)
+    mintty: 'src/termout.c:3541-3556 ''t'' case: explicitly documents the historical Ps<24-vs->=24 opcode
+      overload and implements DECSLPP via win_set_chars()'
+    iterm2: 'sources/VT100/VT100CSIParser.m:786-789 (default: if p[0]<24 -> VT100_NOTSUPPORT, else VT100_DECSLPP);
+      VT100Terminal.m:2744 terminalSetRows:'
+    xterm: ctlseqs.txt:1690,3760 "Ps >= 24 -> Resize to Ps lines (DECSLPP)"
+    alacritty: no 't'-final-byte CSI resize-by-lines handler found in term/mod.rs
+  notes: Almost universally dropped by modern terminals (resize-by-line-count from an application is considered
+    a UX/security footgun); only mintty, iTerm2, xterm and VTE/gnome-terminal still honour it.
+- id: decscl_conformance_levels
+  name: DECSCL (select conformance level)
+  category: other
+  sequence: CSI Ps ; Pc " p
+  spec: https://vt100.net/docs/vt510-rm/DECSCL.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:758 DECSCL CSI(...,'"','p',...); Screen.cpp comment block ~1190-1204
+      explains DECSCL is exempted from its own level gate
+    kitty: kitty/modes.h, kitty/screen.c reference DECSCL/conformance level handling
+    ghostty: src/terminal/device_attributes.zig:43,125-150 only has a HARDCODED conformance_level=.vt420
+      used for the DA1 reply; src/terminal/stream.zig 'p' dispatch (line 1859) only handles DECRQM (intermediates.len==2)
+      — no '"' single-intermediate branch exists, so the command itself is not implemented
+    foot: no CSI intermediate '"' case found anywhere in foot/csi.c
+    wezterm: term/src/terminalstate/performer.rs:304 only answers a DECRQSS query about DECSCL with a
+      hardcoded '65;1"p' reply; no actual '"','p' CSI handler that changes behaviour exists
+    gnome-terminal: src/vteseq.cc:4870,5147 Terminal::DECSCL() — real select-conformance-level handler
+    konsole: no DECSCL/conformance hit in src/Vt102Emulation.cpp
+    windows-terminal: no DECSCL/conformance hit in src/terminal/adapter/adaptDispatch.{cpp,hpp}
+    mintty: 'src/termout.c:3449 CPAIR(''"'',''p''): /* DECSCL: set conformance level */'
+    iterm2: 'sources/VT100/VT100Terminal.m:2215 case VT100CSI_DECSCL: sets _vtLevel, which also gates
+      DECRQCRA elsewhere'
+    xterm: ctlseqs.txt:482 " p -> DECSCL
+    alacritty: no DECSCL/conformance hit anywhere in alacritty_terminal/src/term/mod.rs (the full ansi::Handler
+      implementation)
+  notes: ghostty and wezterm both only fake a DECRQSS reply about DECSCL (or a static DA field) without
+    actually implementing the set command — a case where surface-level string search would have produced
+    a false positive.
+- id: decrqm
+  name: DECRQM (request DEC/ANSI mode)
+  category: other
+  sequence: CSI ? Ps $ p  (DEC) / CSI Ps $ p (ANSI); reply CSI ? Ps ; Pm $ y
+  spec: https://vt100.net/docs/vt510-rm/DECRQM.html
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: partial
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:752-753 DECRQM (DEC form) and DECRQM_ANSI (ANSI form)
+    kitty: kitty/vt-parser.c handles DECRQM
+    ghostty: src/terminal/stream.zig:1859-1893 'p' case only matches intermediates.len()==2 (the DEC private
+      '?','$' form); the 1-intermediate ANSI form ('$' only) falls into the unimplemented else branch
+    foot: foot/csi.c:1599 (ANSI/ECMA-48 form) and :2231 (DEC private form) both implemented
+    wezterm: term/src/terminalstate/mod.rs:1387-1967 Mode::QueryDecPrivateMode / Mode::QueryMode both
+      handled, with per-mode reporting
+    gnome-terminal: src/vteseq.cc:4621 Terminal::DECRQM_ECMA(), :4661 Terminal::DECRQM_DEC()
+    konsole: no '$p'/DECRQM case found in src/Vt102Emulation.cpp
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1934 AdaptDispatch::RequestMode()
+    mintty: src/termout.c:2785 (DEC private), :2932 (ANSI/ECMA), :3452 CPAIR('$','p')
+    iterm2: sources/VT100/VT100CSIParser.m:695,700 VT100CSI_DECRQM_DEC / VT100CSI_DECRQM_ANSI; VT100Terminal.m:2547,2555
+    xterm: ctlseqs.txt:1500,1511 documents both DECRQM forms; charproc.c implements them
+    alacritty: 'term/mod.rs:2135 fn report_mode(&mut self, mode: ansi::Mode)'
+  notes: 'ghostty''s gap is real but narrow: it answers DEC-private DECRQM queries but not the plainer
+    ANSI-mode form.'
+- id: decrqcra
+  name: DECRQCRA (checksum of rectangular area)
+  category: other
+  sequence: CSI Pid ; Pg ; Pt ; Pl ; Pb ; Pr * y  ->  DCS Pid ! ~ xxxx ST
+  spec: https://vt100.net/docs/vt510-rm/DECRQCRA.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'no'
+    wezterm: partial
+    gnome-terminal: partial
+    konsole: partial
+    windows-terminal: partial
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:258-259,745 DECRQCRA plus the XTCHECKSUM deviation-selection extension;
+      unconditional
+    kitty: no DECRQCRA/checksum-of-rectangle hit anywhere under kitty/
+    ghostty: no DECRQCRA/checksum hit anywhere under src/terminal/
+    foot: no DECRQCRA/checksum hit anywhere under foot/ ('*' intermediate switch in csi.c has no 'y' final-byte
+      case)
+    wezterm: term/src/terminalstate/mod.rs:2068-2086 Window::ChecksumRectangularArea is fully computed
+      and replied, but only `if self.config.enable_checksum_rectangular_area()`; config/src/config.rs:263-267
+      documents this as "Disabled by default ... allows programs to read screen contents"
+    gnome-terminal: 'src/vteseq.cc:4495-4560 Terminal::DECRQCRA(): outside `VTE_DEBUG` test builds it
+      unconditionally sends a dummy "0000" reply; the real checksum path is further gated by a `g_test_flags`
+      test-mode flag'
+    konsole: src/Vt102Emulation.cpp:1062-1124 real checksum implementation, but wrapped in `#if ENABLE_DECRQCRA`,
+      and src/CMakeLists.txt:41 sets that cmake option OFF by default
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1281-1300 real implementation, gated by `Feature_VtChecksumReport::IsEnabled()`
+      and a runtime `OptionalFeature::ChecksumReport` opt-in; reports a zero checksum otherwise
+    mintty: 'src/termout.c:3917 CPAIR(''*'',''y''): /* DECRQCRA: VT420 Request Rectangular Checksum */,
+      unconditional'
+    iterm2: sources/VT100/VT100Terminal.m:2094-2106 real implementation gated by vtLevel>=400, `terminalIsTrusted`,
+      and a `terminalCanUseDECRQCRA` delegate/user preference
+    xterm: ctlseqs.txt:1817-1826; charproc.c:5613-5627 CASE_DECRQCRA, unconditional (subject only to the
+      general checksum_ext resource for the XTCHECKSUM-style deviation bits)
+    alacritty: no checksum/DECRQCRA hit anywhere in alacritty_terminal/src/term/mod.rs
+  notes: 'This is the single most consistent security-gating pattern found across the whole survey: wezterm,
+    VTE, konsole and Windows Terminal all implement the real checksum but disable it by default (or entirely
+    outside debug builds) because it lets a program read screen contents cell-by-cell; only contour, mintty
+    and xterm ship it unconditionally, and iTerm2 requires an explicit trust decision.'
+- id: rect_area_ops
+  name: Rectangular area ops (DECCRA copy / DECFRA fill / DECERA erase)
+  category: other
+  sequence: CSI ... $ v (DECCRA) / CSI ... $ x (DECFRA) / CSI ... $ z (DECERA)
+  spec: https://vt100.net/docs/vt510-rm/DECCRA.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'no'
+    foot: 'yes'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:734,739,740 register '$v'/'$z'/'$x' (DECCRA/DECERA/DECFRA), all
+      three dispatched in Screen.cpp
+    kitty: no DECCRA/DECFRA/DECERA hit under kitty/; the only 'fill_rect' hits (decorations.c) are unrelated
+      glyph-rasterization helpers
+    ghostty: no DECCRA/DECFRA/DECERA hit under src/terminal/; the CSI dispatch switch in stream.zig has
+      no 'v'/'x'/'z' top-level case
+    foot: 'foot/csi.c: ''$'' switch cases ''v'' (DECCRA, ~line 1970), ''x'' (DECFRA, line 2090), ''z''
+      (DECERA, line 2115); also documented in foot-ctlseqs.7.scd alongside DECCARA/DECRARA'
+    gnome-terminal: src/vteseq.cc:3538 DECCRA, :3795 DECERA, :3890 DECFRA (plus DECCARA/DECRARA/DECSERA
+      in the same family)
+    wezterm: no DECCRA/DECFRA/DECERA hit under term/src or wezterm-escape-parser/src
+    konsole: no DECCRA/DECFRA/DECERA hit in src/Vt102Emulation.cpp (only DECRQCRA and the unrelated SGR/keycode
+      '$' matches)
+    windows-terminal: 'src/terminal/adapter/adaptDispatch.{hpp,cpp}: CopyRectangularArea (DECCRA, line
+      1150), FillRectangularArea (DECFRA, line 1199), EraseRectangularArea (DECERA, line 1227), plus SelectiveEraseRectangularArea
+      (DECSERA)'
+    mintty: src/termout.c:3766 DECCRA, :3773 DECFRA, :3777 DECERA
+    iterm2: 'sources/VT100/VT100Terminal.m:1090 executeDECCRA:, :1105 executeDECFRA:, :1129 executeDECERA:'
+    xterm: ctlseqs.txt:1748 DECCRA, :1811 DECFRA, :1848 DECERA
+    alacritty: no DECCRA/DECFRA/DECERA hit in alacritty_terminal/src/term/mod.rs
+  notes: 'A clean split: every terminal with a genuine VT420-lineage legacy-DEC implementation (contour,
+    foot, VTE, Windows Terminal, mintty, iTerm2, xterm) has all three; every ''clean-slate'' modern terminal
+    (kitty, ghostty, wezterm, alacritty) has none of them, and konsole — despite being KDE''s legacy-minded
+    emulator — has none either.'
+- id: margins_decstbm_declrmm
+  name: Scroll margins — DECSTBM (top/bottom) and DECLRMM (left/right)
+  category: other
+  sequence: CSI Pt ; Pb r (DECSTBM) / CSI Pl ; Pr s (DECSLRM, gated by DEC private mode 69 = DECLRMM)
+  spec: https://vt100.net/docs/vt510-rm/DECLRMM.html
+  support:
+    contour: 'yes'
+    kitty: partial
+    ghostty: 'yes'
+    foot: partial
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: partial
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: partial
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:769 DECSTBM; primitives.h:798,1035,1309 DECMode::LeftRightMargin
+      gated behind mode 69 (VT420+, matches xterm)
+    kitty: DECSTBM (top/bottom scroll region) is universally present; no DECLRMM/DECSLRM/left-right-margin
+      hit anywhere in kitty/
+    ghostty: src/terminal/stream.zig:1970 DECSTBM; src/terminal/{stream.zig,Terminal.zig,formatter.zig}
+      all reference DECLRMM and a scrolling_region with left/right fields
+    foot: foot/dcs.c:272 DECSTBM; no DECLRMM/DECSLRM/mode-69 hit found in foot/csi.c
+    wezterm: term/src/terminalstate/performer.rs:310 DECSTBM RQSS reply; wezterm-escape-parser/src/csi.rs:912
+      LeftRightMarginMode=69, term/src/terminalstate/mod.rs:1486-2572 honours it
+    gnome-terminal: DECSTBM universal; src/vteseq.cc:387 eDECLRMM private mode, :5762-5819 DECSLRM dispatch
+      gated on m_modes_private.DECLRMM()
+    konsole: src/Vt102Emulation.cpp:2196 DECSTBM ('r'); no DECLRMM/DECSLRM hit found
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:2224 DECSTBM; :1832-1994 DECLRMM_LeftRightMarginMode
+      + AllowDECSLRM mode gate; :2303 DECSLRM
+    mintty: src/termout.c:3503 DECSTBM; :2582,2828,3514,4452 DECLRMM/DECSLRM
+    iterm2: VT100Terminal.m:2069 DECSTBM; :2323,3575 DECSLRM (parsed as DECSLRM_OR_ANSICSI_SCP, disambiguated
+      like xterm's own SCOSC/DECSLRM overload)
+    xterm: ctlseqs.txt:965,1107 DECLRMM enable/disable via mode 69; DECSTBM documented since VT100
+    alacritty: term/mod.rs:2155 fn set_scrolling_region(top, bottom) (DECSTBM) takes only top/bottom;
+      no left/right-margin (DECLRMM/DECSLRM) handler found
+  notes: 'DECSTBM (VT100-era) is universal. DECLRMM (VT420 left/right margins) is the rarer half: kitty,
+    foot, konsole and alacritty all stop at top/bottom-only.'
+- id: decsca
+  name: DECSCA (select character protection attribute)
+  category: other
+  sequence: CSI Ps " q
+  spec: https://vt100.net/docs/vt510-rm/DECSCA.html
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'yes'
+    foot: 'no'
+    wezterm: 'no'
+    gnome-terminal: 'yes'
+    konsole: 'no'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:757 DECSCA CSI(...,'"','q',...)
+    kitty: no DECSCA/protection-attribute hit anywhere under kitty/
+    ghostty: src/terminal/stream.zig 'q' case, intermediate '"' branch -> ansi.ProtectedMode
+    gnome-terminal: 'src/vteseq.cc:3090 (comment: "terminal supports DECSCA and related selective-erase"),
+      :4869,5110 Terminal::DECSCA()'
+    foot: no DECSCA hit anywhere in foot/csi.c (no '"' intermediate case at all)
+    wezterm: no DECSCA/protection-attribute hit under term/src or wezterm-escape-parser/src
+    konsole: no DECSCA hit in src/Vt102Emulation.cpp
+    windows-terminal: src/terminal/adapter/adaptDispatch.{hpp,cpp}:75,2973-3003 SetCharacterProtectionAttribute()
+    mintty: 'src/termout.c:3649 CPAIR(''"'',''q''): /* DECSCA: select character protection attribute */'
+    iterm2: 'VT100Terminal.m: protectedMode ivar (VT100TerminalProtectedMode), set via VT100CSI_DECSCA
+      (VT100CSIParser.m:555)'
+    xterm: ctlseqs.txt:484,1551 " q -> DECSCA
+    alacritty: no DECSCA/protection-attribute hit in alacritty_terminal/src/term/mod.rs
+  notes: 'Same modern-vs-legacy split as the rectangular-area ops: kitty/foot/wezterm/alacritty/konsole
+    skip this VT220 legacy feature entirely.'
+- id: osc22_pointer_shape
+  name: OSC 22 mouse pointer shape
+  category: other
+  sequence: OSC 22 ; shape-name(s) ST
+  spec: https://sw.kovidgoyal.net/kitty/pointer-shapes/
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'no'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'yes'
+    iterm2: 'no'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:877 POINTERSHAPE = detail::OSC(22, ...)
+    kitty: kitty/vt-parser.c:553 dispatches OSC 22 through set_dynamic_color into pointer-shape handling;
+      kitty/docs/pointer-shapes.rst documents kitty's own extended spec (names, push/pop stack, query)
+      built on "the original escape code proposal from xterm"
+    ghostty: src/terminal/osc/parsers/mouse_shape.zig; src/terminal/stream.zig oscDispatch() .mouse_shape
+      case
+    foot: 'foot/osc.c:1497 case 22: /* Set mouse cursor */'
+    wezterm: no OSC-22/pointer-shape hit under term/src, wezterm-escape-parser/src, or wezterm-gui
+    gnome-terminal: no pointer-shape/OSC-22 hit anywhere in vteseq.cc
+    konsole: no OSC-22/pointer-shape hit in src/Vt102Emulation.cpp
+    windows-terminal: no OSC-22/pointer-shape hit in src/terminal/adapter/adaptDispatch.{cpp,hpp}
+    xterm: src/misc.c:3487 OSC_SetupPointer = 22 — this is the ORIGINAL xterm proposal that kitty's spec
+      explicitly extends
+    mintty: 'src/termout.c:4993 when 22: { // set mouse pointer style'
+    iterm2: no OSC-22/pointer-shape hit anywhere in sources/VT100/VT100Terminal.m
+    alacritty: no OSC-22/pointer-shape hit in alacritty_terminal/src/term/mod.rs; only local mouse-config
+      (alacritty/src/config/mouse.rs), not a protocol handler
+  notes: xterm's OSC 22 handling is the original (narrower) proposal; kitty later published a richer,
+    system-independent spec (named shapes, push/pop stack, query) that contour, ghostty and foot all implement.
+    gnome-terminal/konsole/wezterm/iTerm2/alacritty/windows-terminal implement no protocol-level pointer-shape
+    control (only local hover-cursor config).
+- id: xtgettcap
+  name: XTGETTCAP (request termcap/terminfo string)
+  category: other
+  sequence: DCS + q Pt ST  ->  DCS 1 + r Pt = Pv ST
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands
+  support:
+    contour: 'yes'
+    kitty: 'no'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'no'
+    konsole: 'no'
+    windows-terminal: 'no'
+    mintty: 'no'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'no'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/Functions.h:197,837 XTGETTCAP registered as DCS('+','q',...)
+    kitty: no XTGETTCAP/termcap hit anywhere under kitty/
+    ghostty: src/terminal/dcs.zig, src/terminal/Parser.zig reference XTGETTCAP
+    foot: 'foot/dcs.c:502 case ''q'': /* XTGETTCAP */, :116,124 hex-decode/log the requested capability'
+    wezterm: 'term/src/terminalstate/mod.rs:1188-1247 fn xt_get_tcap(&mut self, names: Vec<String>)'
+    gnome-terminal: no XTGETTCAP/termcap hit anywhere in vteseq.cc
+    konsole: no XTGETTCAP/termcap hit in src/Vt102Emulation.cpp
+    windows-terminal: no XTGETTCAP/termcap hit in src/terminal/adapter/adaptDispatch.{cpp,hpp}
+    iterm2: 'sources/VT100/VT100Terminal.m: hex-decodes '';''-separated capability names and builds an
+      error domain literally named "com.googlecode.iterm2.termcap-terminfo" (~line 3202-3210) — the XTGETTCAP
+      handler'
+    xterm: ctlseqs.txt:546 Request Termcap/Terminfo String (XTGETTCAP), xterm-original
+    mintty: 'src/termout.c:4147 explicit comment: "No DECUDK (User-Defined Keys) or xterm termcap/terminfo
+      data."'
+    alacritty: no XTGETTCAP/termcap hit in alacritty_terminal/src/term/mod.rs
+  notes: mintty is a rare case of an EXPLICIT, documented non-implementation rather than silent absence.
+- id: decset_1049_altscreen
+  name: Alternate screen buffer (DEC private modes 47 / 1047 / 1049)
+  category: window
+  sequence: CSI ? 1049 h/l  (also 47, 1047)
+  spec: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Alternate-Screen-Buffer
+  support:
+    contour: 'yes'
+    kitty: 'yes'
+    ghostty: 'yes'
+    foot: 'yes'
+    wezterm: 'yes'
+    gnome-terminal: 'yes'
+    konsole: 'yes'
+    windows-terminal: 'yes'
+    mintty: 'yes'
+    iterm2: 'yes'
+    xterm: 'yes'
+    alacritty: 'yes'
+    apple-terminal: unknown
+  evidence:
+    contour: src/vtbackend/primitives.h:731,739,1040-1060 models 47/1047/1049 as a 3-row {carryCursor,clearOnEnter,clearOnExit}
+      data table, matching xterm's ToAlternate/FromAlternate semantics
+    kitty: kitty/modes.h has ALT_SCREEN handling including mode 1049
+    ghostty: src/terminal/modes.zig and Terminal.zig implement the alternate screen with mode 1049
+    foot: foot/csi.c:498-500,657-659,687-707 handles 47, 1047 and 1049 (including xtsave/xtrestore for
+      each)
+    wezterm: wezterm-escape-parser/src/csi.rs SwapScreenAndSetRestoreCursor=1049; term/src/terminalstate/mod.rs:1946-2078
+      fn swap_alt()
+    gnome-terminal: src/vteseq.cc:393-405 eXTERM_ALTBUF(47) / eXTERM_OPT_ALTBUF(1047) / eXTERM_OPT_ALTBUF_SAVE_CURSOR(1049)
+    konsole: src/Vt102Emulation.cpp:2253-2344 handles 47, 1047 and 1049 each with matching save/restore-cursor
+      semantics
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1747-1753 UseAlternateScreenBuffer(); extensively
+      exercised for mode 1049 in src/host/ut_host/*Tests.cpp
+    mintty: src/termout.c:2627,2633,2650 (query) and :2856,2858,2862 (set) all handle 47, 1047, 1049
+    iterm2: VT100Terminal.m:908-909 documents the exact 47/1047/1049 save/clear/restore truth table in
+      a comment, then implements it at :929,961
+    xterm: ctlseqs.txt:958,1018,1022,1164 (digit-spaced '1 0 4 7'/'1 0 4 9') — xterm is the origin of
+      all three modes
+    alacritty: alacritty_terminal/src/term/mod.rs:1946,2009 NamedPrivateMode::SwapScreenAndSetRestoreCursor
+      -> swap_alt()
+  notes: The one universally-supported row in this whole batch — every terminal surveyed implements at
+    least mode 1049.

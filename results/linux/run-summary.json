@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "generated": "2026-07-19 10:40:20 +0200",
+    "generated": "2026-07-19 10:50:54 +0200",
     "platform": "linux",
     "platform_detail": "Linux-7.1.3-201.fc44.x86_64-x86_64-with-glibc2.43",
     "ucs_detect_pinned_commit": "ea4510a4bc6e99df2af500d454ac34f66c0245b3",
@@ -15,7 +15,8 @@
       "--probe-silently",
       "--no-final-summary",
       "--limit-category-time",
-      "240"
+      "240",
+      "--detect-all-dec-modes"
     ]
   },
   "runs": [
@@ -27,7 +28,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 30.0,
+      "elapsed_sec": 30.5,
       "yaml": "contour.yaml"
     },
     {
@@ -38,7 +39,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 94.6,
+      "elapsed_sec": 94.1,
       "yaml": "kitty.yaml"
     },
     {
@@ -60,7 +61,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 41.0,
+      "elapsed_sec": 42.0,
       "yaml": "wezterm.yaml"
     },
     {
@@ -71,7 +72,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 2.0,
+      "elapsed_sec": 3.0,
       "yaml": "konsole.yaml"
     },
     {
@@ -82,7 +83,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 48.0,
+      "elapsed_sec": 51.5,
       "yaml": "gnome-terminal.yaml"
     },
     {
@@ -93,7 +94,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 4.5,
+      "elapsed_sec": 5.0,
       "yaml": "alacritty.yaml"
     },
     {
@@ -115,7 +116,7 @@
       "verified_launch": true,
       "status": "ok",
       "exit_code": "0",
-      "elapsed_sec": 3.0,
+      "elapsed_sec": 3.5,
       "yaml": "foot.yaml"
     }
   ]

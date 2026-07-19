@@ -60,6 +60,21 @@ def run_one(term: Terminal, display, outdir: pathlib.Path,
     for stale in (yaml_path, rc_path):
         stale.unlink(missing_ok=True)
 
+    launch = term.launch_for()
+    if launch is not None and launch.applescript_app:
+        # iTerm2 and Terminal.app take a command through AppleScript, not argv.
+        # Refusing loudly beats building a nonsensical `osascript sh -c ...` argv that
+        # would fail somewhere less obvious.
+        return {
+            "terminal": term.key, "name": term.name, "version": "unknown",
+            "display": launch.display, "verified_launch": False,
+            "status": "not-implemented", "exit_code": None, "elapsed_sec": 0.0,
+            "yaml": None,
+            "detail": (f"{term.name} must be driven through AppleScript "
+                       f"(application {launch.applescript_app!r}); that path is "
+                       f"scaffolded but not implemented. See README.md."),
+        }
+
     config_home = outdir / "config" / term.key
     config_home.mkdir(parents=True, exist_ok=True)
 
@@ -80,7 +95,6 @@ def run_one(term: Terminal, display, outdir: pathlib.Path,
     for stale_var in ("DISPLAY", "WAYLAND_DISPLAY"):
         env.pop(stale_var, None)
     env.update(display.env)
-    launch = term.launch_for()
     if launch is not None:
         env.update(launch.env)
     env["XDG_CONFIG_HOME"] = str(config_home)
@@ -163,6 +177,9 @@ def main() -> int:
                         help="pass --all to ucs-detect (full tables, not contested)")
     parser.add_argument("--no-languages", action="store_true")
     parser.add_argument("--limit-category-time", type=int, default=240)
+    parser.add_argument("--all-dec-modes", action="store_true",
+                        help="probe every known DEC private mode, not just the "
+                             "notable subset (slower, but fills the mode table)")
     args = parser.parse_args()
 
     if not os.access(UCS_DETECT, os.X_OK):
@@ -188,6 +205,8 @@ def main() -> int:
         ucs_args += ["--no-languages-test"]
     if args.limit_category_time:
         ucs_args += ["--limit-category-time", str(args.limit_category_time)]
+    if args.all_dec_modes:
+        ucs_args += ["--detect-all-dec-modes"]
 
     # The measurement tool is a pinned upstream commit plus this repository's patches,
     # applied to the working tree rather than committed.  Recording only the commit
