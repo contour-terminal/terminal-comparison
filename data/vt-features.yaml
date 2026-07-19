@@ -1566,7 +1566,9 @@
     apple-terminal: unknown
   evidence:
     contour: 'measured by harness/vt_probe.py on this machine: 8 pages reachable, NP/PP confirmed by DECXCPR'
-    kitty: measured by harness/vt_probe.py on this machine
+    kitty: no page model in kitty/vt-parser.c; worse than unsupported -- dispatch_csi() checks only for
+      a '#' intermediate on 'P', so `CSI Ps SP P` (PPA) falls through to the plain DCH branch and deletes
+      characters (vt-parser.c:1231-1236)
     ghostty: measured by harness/vt_probe.py on this machine
     foot: measured by harness/vt_probe.py on this machine
     wezterm: measured by harness/vt_probe.py on this machine
@@ -1574,13 +1576,19 @@
       one page is reachable'
     konsole: measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
-    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1669 AdaptDispatch::PagePositionAbsolute
-      -> _pages.MoveTo(); PPR/PPB declared alongside it in adaptDispatch.hpp:88-90
+    windows-terminal: src/terminal/adapter/PageManager.hpp:66 MAX_PAGES = 6 with an array of six independent
+      TextBuffers; PageManager.cpp:152-225 MoveTo swaps row content and carries cursor position and attributes
+      across; paging is disabled on the alt buffer (PageManager.cpp:122-125), so this is not scrollback
+      relabelled as pages
     mintty: src/termout.c has DECXCPR but no PPA/PPR/PPB handler
     xterm: VTPrsTbl.c:1877-1879 maps PPA/PPR/PPB to CASE_GROUND_STATE -- the sequences are parsed and
       discarded; the probe confirms one page
-  notes: Contour and Windows Terminal are the only two here with a real page model. xterm recognises the
-    page sequences and ignores them, which is why it reports a page number while having a single page.
+  notes: 'Contour and Windows Terminal are the only two here with a real page model. Windows Terminal''s
+    is capped at six pages and resizes background pages without reflowing them, but they are genuinely
+    distinct addressable buffers, and paging is bypassed on the alt buffer, which rules out scrollback
+    relabelled as pages. xterm recognises the page sequences and discards them, which is why it reports
+    a page number while having a single page. kitty is the one to be careful with: `CSI Ps SP P` is not
+    rejected but misdispatched as delete-character.'
 - id: decxcpr
   name: DECXCPR (extended cursor position report)
   category: window
@@ -1602,19 +1610,26 @@
     apple-terminal: unknown
   evidence:
     contour: 'measured by harness/vt_probe.py on this machine: replies with the page parameter'
-    kitty: 'measured by harness/vt_probe.py on this machine: replies, but without the third (page) parameter'
-    ghostty: measured by harness/vt_probe.py on this machine
-    foot: measured by harness/vt_probe.py on this machine
+    kitty: kitty/screen.c:2932 echoes the '?' prefix but formats only "%u;%uR" -- the private form is
+      recognised, the reply carries no page parameter
+    ghostty: src/terminal/device_status.zig:96-100 registers cursor_position with question=false, so `CSI
+      ? 6 n` matches nothing and no reply is sent at all
+    foot: csi.c:1571-1595 handles only param 996 under the '?' private form; `CSI ? 6 n` falls through
+      silently with no reply
     wezterm: measured by harness/vt_probe.py on this machine
     konsole: measured by harness/vt_probe.py on this machine
-    alacritty: measured by harness/vt_probe.py on this machine
+    alacritty: vte src/ansi.rs has only ('n', []) among the 'n' arms -- no ('n', [b'?']) -- so `CSI ?
+      6 n` reaches the unhandled arm and is dropped without a reply
     gnome-terminal: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
     xterm: 'measured by harness/vt_probe.py on this machine: replies with a page parameter'
-    windows-terminal: src/terminal/adapter/DispatchTypes.hpp:503 ExtendedCursorPositionReport = DECPrivateStatus(6);
-      adaptDispatch.cpp _CursorPositionReport(extendedReport)
+    windows-terminal: src/terminal/adapter/adaptDispatch.cpp:1574-1575 reports the live _pages.ActivePage().Number()
+      as the third parameter, not a constant
     mintty: 'src/termout.c:3667 `when 6:  // DECXCPR`'
-  notes: 'A terminal can answer DECXCPR without the page parameter, which is recorded here as partial:
-    it implements the report but has no page memory to describe.'
+  notes: Three distinct behaviours hide behind one row. Contour, GNOME Terminal, xterm and Windows Terminal
+    answer with a page parameter. kitty answers the private form but without one, recorded as partial.
+    Ghostty, foot and Alacritty do not implement the private form at all and answer nothing -- a rejection
+    rather than a degraded reply, so an application polling with `CSI ? 6 n` hangs waiting rather than
+    reading a short answer.
 - id: dec_locator
   name: DEC locator (DECELR / DECSLE / DECRQLP)
   category: input
@@ -1631,7 +1646,7 @@
     windows-terminal: 'no'
     mintty: 'yes'
     iterm2: unknown
-    xterm: 'yes'
+    xterm: partial
     alacritty: 'no'
     apple-terminal: unknown
   evidence:
@@ -1644,11 +1659,14 @@
     konsole: no DECELR/DECSLE/DECRQLP in the source tree; measured by harness/vt_probe.py on this machine
     alacritty: measured by harness/vt_probe.py on this machine
     gnome-terminal: measured by harness/vt_probe.py on this machine
-    windows-terminal: DECELR/DECSLE/DECRQLP appear only in doc/reference/master-sequence-list.csv, which
-      is a catalogue of sequences; no handler exists under src/
+    windows-terminal: no VTID for 'z, '{ or '| among the 133 entries in parser/OutputStateMachineEngine.hpp
+      -- no parser mapping, so no dispatch and no DECLRP reply; adaptDispatch.cpp:1407-1411 answers the
+      DSR locator-status queries with a hardcoded "?53" (locator not connected)
     mintty: src/termout.c:3682/3705/3715 CPAIR handlers for DECELR, DECSLE and DECRQLP; src/termmouse.c:344
       handles the locator events
-    xterm: charproc.c CASE_DECELR / CASE_DECRQLP with real handling (56 references across the tree)
-  notes: xterm and mintty both implement the locator in source, but xterm did not answer the probe at
-    its default conformance level, so its measured row reads no. Windows Terminal lists the sequences
-    in its documentation catalogue without implementing them.
+    xterm: charproc.c CASE_DECELR / CASE_DECRQLP are real handlers, but the terminal did not answer DECRQLP
+      at its default conformance level under the harness, so the feature is present in source and not
+      reachable as shipped
+  notes: mintty implements the locator outright. xterm implements it in source but did not answer at its
+    default conformance level, so it is recorded as partial. Windows Terminal lists all three sequences
+    in its documentation catalogue while affirmatively reporting no locator device.

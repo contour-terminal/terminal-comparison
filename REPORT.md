@@ -305,7 +305,7 @@ Compiled from each terminal's source tree and documentation rather than measured
 | Focus in/out reporting | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
 | SGR extended mouse reporting | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | ? |
 | SGR-Pixel mouse reporting | yes | yes | yes | yes | yes | yes | no | no | yes | no | yes | no | ? |
-| DEC locator (DECELR / DECSLE / DECRQLP) | yes | no | no | no | no | no | no | no | yes | no | yes | ? | ? |
+| DEC locator (DECELR / DECSLE / DECRQLP) | yes | no | no | no | no | no | no | no | partial | no | yes | ? | ? |
 
 ### Other
 
