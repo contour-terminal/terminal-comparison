@@ -4,7 +4,7 @@ name: Publish report to GitHub Pages
 # pull request that adds results/<platform>/ cannot leave docs/index.html stale.
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
